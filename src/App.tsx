@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Award, BookOpen, Check, ChevronRight,
-  CircleHelp, Clock3, Eye, Flag, Hand, Home, LockKeyhole, Map,
+  CircleHelp, Clock3, Cuboid, Eye, Flag, Hand, Home, LockKeyhole, Map,
   Medal, Menu, RotateCcw, Shield, ShieldCheck, Target, Trophy,
   Users, X, Zap,
 } from 'lucide-react'
 import { dimensions, gameRules, initialProgress, missions } from './gameData'
 import type { DimensionId, GameProgress, Mission, MissionState } from './types'
+const TerminalMap3D = lazy(() => import('./TerminalMap3D'))
 import './App.css'
 
 type View = 'map' | 'mission' | 'rules' | 'dimensions' | 'world'
@@ -155,7 +156,7 @@ function App() {
         </nav>
         <div className="player-status">
           <span className="player-avatar">CM</span>
-          <span><strong>Carlos Medina</strong><small>Operario de Trinca · Callao</small></span>
+          <span><strong>Carlos Medina</strong><small>Operario de Trinca · Buenos Aires</small></span>
           <span className="points">{progress.points.toLocaleString('es-AR')} pts</span>
         </div>
         <button className="icon-button menu-button" type="button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu">
@@ -231,6 +232,7 @@ interface MapViewProps {
 }
 
 function MapView({ progress, globalProgress, missionState, openMission, setView, reportRisk }: MapViewProps) {
+  const [mapMode, setMapMode] = useState<'3d' | '2d'>('3d')
   const nextMission = missions.find((mission) => missionState(mission) === 'available') ?? missions[0]
   return (
     <>
@@ -262,29 +264,43 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
       <section className="map-section" aria-labelledby="map-title">
         <div className="section-heading">
           <div><span className="eyebrow">AGE Z · Mapa de campana</span><h2 id="map-title">Convierte cada zona roja en una capacidad demostrada.</h2></div>
-          <div className="state-legend"><span className="red">Bloqueada</span><span className="amber">Disponible</span><span className="green">Certificada</span></div>
+          <div className="map-heading-actions">
+            <div className="state-legend"><span className="red">Bloqueada</span><span className="amber">Disponible</span><span className="green">Certificada</span></div>
+            <div className="map-mode-switch" aria-label="Modo de visualizacion">
+              <button className={mapMode === '3d' ? 'active' : ''} type="button" onClick={() => setMapMode('3d')}><Cuboid /> 3D</button>
+              <button className={mapMode === '2d' ? 'active' : ''} type="button" onClick={() => setMapMode('2d')}><Map /> 2D</button>
+            </div>
+          </div>
         </div>
         <div className="map-layout">
-          <div className="terminal-map">
-            <img src={asset('age-z-map.png')} alt="Mapa conceptual de una terminal con zonas bloqueadas y seguras" />
-            <div className="map-overlay" />
-            {missions.map((mission) => {
-              const state = missionState(mission)
-              return (
-                <button
-                  key={mission.id}
-                  className={`hotspot ${state}`}
-                  style={{ left: `${mission.mapPosition.x}%`, top: `${mission.mapPosition.y}%` }}
-                  onClick={() => openMission(mission)}
-                  aria-label={`${mission.title}. Estado: ${state}`}
-                  title={mission.title}
-                >
-                  {state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <Check /> : <Target />}
-                  <span>{mission.order}</span>
-                </button>
-              )
-            })}
-            <div className="map-caption"><Map size={18} /> Terminal demo · Callao <small>Illustrative prototype data</small></div>
+          <div className={`terminal-map ${mapMode === '3d' ? 'three-mode' : ''}`}>
+            {mapMode === '3d' ? (
+              <Suspense fallback={<div className="map-3d-loading" role="status"><span>3D</span><small>Preparando visor interactivo</small></div>}>
+                <TerminalMap3D missions={missions} missionState={missionState} openMission={openMission} />
+              </Suspense>
+            ) : (
+              <>
+                <img src={asset('age-z-map.png')} alt="Mapa conceptual de una terminal con zonas bloqueadas y seguras" />
+                <div className="map-overlay" />
+                {missions.map((mission) => {
+                  const state = missionState(mission)
+                  return (
+                    <button
+                      key={mission.id}
+                      className={`hotspot ${state}`}
+                      style={{ left: `${mission.mapPosition.x}%`, top: `${mission.mapPosition.y}%` }}
+                      onClick={() => openMission(mission)}
+                      aria-label={`${mission.title}. Estado: ${state}`}
+                      title={mission.title}
+                    >
+                      {state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <Check /> : <Target />}
+                      <span>{mission.order}</span>
+                    </button>
+                  )
+                })}
+              </>
+            )}
+            <div className="map-caption"><Cuboid size={18} /> APM Terminals Buenos Aires <small>Real 3D model · Prototype interactions</small></div>
           </div>
           <aside className="campaign-list" aria-label="Misiones de la campana">
             <div className="campaign-list-header"><span>RUTA ASIGNADA</span><strong>{progress.completed.length} de 8 completas</strong></div>

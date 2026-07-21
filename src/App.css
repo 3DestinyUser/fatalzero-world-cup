@@ -60,3 +60,39 @@ footer { min-height: 100px; padding: 22px 4vw; display: grid; grid-template-colu
 @media (max-width: 470px) {
   .hero-copy h1 { font-size: 35px; }.mission-now { grid-template-columns: auto 1fr; }.mission-now .icon-button { display: none; }.hero-metrics span { font-size: 11px; }.terminal-map { min-height: 460px; }.hotspot { width: 38px; height: 38px; }.hotspot svg { width: 16px; }.mission-visual { min-height: 300px; height: 300px; }.mission-panel { padding: 25px 15px; }.certificate { padding: 32px 12px 24px; }.certificate h2 { font-size: 25px; }.certificate-meta { flex-direction: column; }.dimension-wheel button { width: 44px; height: 44px; --distance: min(37vw, 170px); }.world-stats { grid-template-columns: 1fr; }.rank-row { grid-template-columns: 36px 1fr; }.rank-row em { grid-column: 2; }
 }
+
+
+/* Interactive APM Buenos Aires 3D map */
+.map-heading-actions { display: flex; align-items: center; gap: 16px; }
+.map-mode-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line); background: #091824; }
+.map-mode-switch button { min-width: 72px; height: 38px; border: 0; display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: var(--muted); background: transparent; font: inherit; font-weight: 800; cursor: pointer; }
+.map-mode-switch button svg { width: 17px; }
+.map-mode-switch button.active { color: #07141e; background: var(--green-2); }
+.terminal-map.three-mode { background: #07141e; }
+.map-3d-stage { position: absolute; inset: 0; }
+.map-3d-stage canvas { display: block; width: 100%; height: 100%; }
+.map-3d-loading { position: absolute; inset: 0; z-index: 5; display: grid; align-content: center; justify-items: center; gap: 10px; color: var(--white); background: #07141e; }
+.map-3d-loading > span { font-size: 42px; font-weight: 900; }
+.map-3d-loading > div { width: min(280px, 64vw); height: 5px; background: #263945; }
+.map-3d-loading i { display: block; height: 100%; background: var(--green-2); }
+.map-3d-loading small { color: var(--muted); }
+.map-3d-toolbar { position: absolute; z-index: 4; top: 16px; right: 16px; display: flex; gap: 7px; }
+.map-3d-toolbar button { width: 42px; height: 42px; padding: 0; border: 1px solid var(--line); display: grid; place-items: center; color: var(--white); background: rgba(4, 16, 25, .9); cursor: pointer; }
+.map-3d-toolbar svg { width: 18px; }
+.map-3d-help { position: absolute; z-index: 4; top: 17px; left: 16px; padding: 9px 11px; display: flex; align-items: center; gap: 8px; color: var(--muted); background: rgba(4, 16, 25, .86); border: 1px solid var(--line); font-size: 12px; pointer-events: none; }
+.map-3d-help svg { width: 16px; }
+.map-3d-pin { width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 3px solid currentColor; display: grid; place-items: center; color: var(--amber); background: #261d0d; box-shadow: 0 0 0 6px rgba(242, 173, 61, .17), 0 0 22px currentColor; font: 900 13px/1 inherit; cursor: pointer; }
+.map-3d-pin.locked { color: var(--red); background: #3b1114; }
+.map-3d-pin.completed, .map-3d-pin.sustained { color: var(--green-2); background: #15351d; }
+.map-3d-pin:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+@media (max-width: 780px) {
+  .map-heading-actions { margin-top: 18px; justify-content: space-between; }
+  .state-legend { margin-top: 0; }
+}
+@media (max-width: 560px) {
+  .map-heading-actions { align-items: flex-start; flex-direction: column; }
+  .map-mode-switch { align-self: stretch; }
+  .map-mode-switch button { flex: 1; }
+  .map-3d-help { display: none; }
+  .map-caption { left: 10px; right: 10px; bottom: 10px; justify-content: center; }
+}
