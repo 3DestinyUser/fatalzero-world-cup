@@ -1,17 +1,18 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Award, BookOpen, Check, ChevronRight,
-  CircleHelp, Clock3, Cuboid, Eye, Flag, Hand, Home, LockKeyhole, Map,
-  Medal, Menu, RotateCcw, Shield, ShieldCheck, Target, Trophy,
-  Users, X, Zap,
+  CircleHelp, Clock3, Crown, Cuboid, Eye, Flag, Gamepad2, Hand, Home,
+  LockKeyhole, Map, Medal, Menu, Monitor, RotateCcw, ScanLine, Shield,
+  ShieldCheck, Smartphone, Swords, Target, Trophy, Users, X, Zap,
 } from 'lucide-react'
-import { dimensions, gameRules, initialProgress, missions } from './gameData'
-import type { DimensionId, GameProgress, Mission, MissionState } from './types'
+import { activeRole, challenges, dimensions, gameRules, initialProgress, missions } from './gameData'
+import type { Challenge, DimensionId, GameProgress, Mission, MissionState, PPEId, RoleProfile } from './types'
+import ARScanner from './ARScanner'
 const TerminalMap3D = lazy(() => import('./TerminalMap3D'))
 import './App.css'
 
-type View = 'map' | 'mission' | 'rules' | 'dimensions' | 'world'
-type Phase = 'briefing' | 'hazards' | 'decision' | 'evidence' | 'certificate' | 'debrief'
+type View = 'map' | 'mission' | 'challenges' | 'rules' | 'dimensions' | 'world'
+type Phase = 'briefing' | 'scan' | 'hazards' | 'decision' | 'evidence' | 'certificate' | 'debrief'
 
 const STORAGE_KEY = 'fatalzero-world-cup-progress-v1'
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
@@ -19,7 +20,17 @@ const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
 const loadProgress = (): GameProgress => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
-    return saved ? { ...initialProgress, ...JSON.parse(saved) } : initialProgress
+    if (!saved) return initialProgress
+    const parsed = JSON.parse(saved) as Partial<GameProgress>
+    return {
+      ...initialProgress,
+      ...parsed,
+      sharedMissions: parsed.sharedMissions ?? [],
+      acceptedChallenges: parsed.acceptedChallenges ?? [],
+      completedChallenges: parsed.completedChallenges ?? [],
+      unlockedBadges: parsed.unlockedBadges ?? [],
+      scans: parsed.scans ?? 0,
+    }
   } catch {
     return initialProgress
   }
@@ -27,13 +38,14 @@ const loadProgress = (): GameProgress => {
 
 const navItems: { id: View; label: string; icon: typeof Home }[] = [
   { id: 'map', label: 'Mapa', icon: Map },
+  { id: 'challenges', label: 'Desafios', icon: Swords },
   { id: 'rules', label: 'Como se juega', icon: CircleHelp },
   { id: 'dimensions', label: '9 Dimensiones', icon: Shield },
   { id: 'world', label: 'World Cup', icon: Trophy },
 ]
 
 const phaseLabels: Record<Phase, string> = {
-  briefing: 'Briefing', hazards: 'Exploracion', decision: 'Decision', evidence: 'Evidencia',
+  briefing: 'Briefing', scan: 'Field Scan', hazards: 'Confirmacion', decision: 'Decision', evidence: 'Evidencia',
   certificate: 'Certificado', debrief: 'Impacto 9D',
 }
 
@@ -56,6 +68,8 @@ function App() {
   const [safeDecision, setSafeDecision] = useState(false)
   const [decisionFeedback, setDecisionFeedback] = useState('')
   const [evidence, setEvidence] = useState<string[]>([])
+  const [scanComplete, setScanComplete] = useState(false)
+  const [selectedPpe, setSelectedPpe] = useState<PPEId[]>([])
   const [toast, setToast] = useState('')
   const [dimensionFocus, setDimensionFocus] = useState<DimensionId>('culture')
 
@@ -66,10 +80,43 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [toast])
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [view, selectedMission.id, phase])
+
+  useEffect(() => {
+    window.render_game_to_text = () => JSON.stringify({
+      coordinateSystem: '3D: model-centered X/Z plane with Y up. 2D: top-left origin, x right, y down.',
+      view,
+      player: { name: 'Carlos Medina', role: activeRole.name, terminal: activeRole.terminal },
+      mission: view === 'mission' ? {
+        id: selectedMission.id,
+        title: selectedMission.title,
+        phase,
+        hazardsSelected: selectedHazards,
+        requiredHazards: selectedMission.requiredHazards,
+        ppeSelected: selectedPpe,
+        requiredPpe: selectedMission.requiredPpe,
+        scanComplete,
+        safeDecision,
+        evidenceSelected: evidence,
+      } : null,
+      map: missions.map((mission) => ({ id: mission.id, order: mission.order, state: missionState(mission) })),
+      progress,
+    })
+    window.advanceTime = () => { /* The prototype has no time-based scoring or simulation state. */ }
+    return () => {
+      delete window.render_game_to_text
+      delete window.advanceTime
+    }
+  })
+
   const completedCount = progress.completed.length
   const globalProgress = Math.round((completedCount / missions.length) * 100)
+  const playerLevel = 7 + Math.floor(Math.max(0, progress.points - initialProgress.points) / 600)
 
   const missionState = (mission: Mission): MissionState => {
+    if (!mission.applicableRoles.includes(activeRole.id)) return 'not-applicable'
     if (progress.sustained.includes(mission.id)) return 'sustained'
     if (progress.completed.includes(mission.id)) return 'completed'
     if (view === 'mission' && selectedMission.id === mission.id) return 'active'
@@ -86,9 +133,15 @@ function App() {
     setSafeDecision(false)
     setDecisionFeedback('')
     setEvidence([])
+    setScanComplete(false)
+    setSelectedPpe([])
   }
 
   const openMission = (mission: Mission) => {
+    if (!mission.applicableRoles.includes(activeRole.id)) {
+      setToast('Esta mision no corresponde a tu rol. Consulta a tu supervisor para otra ruta.')
+      return
+    }
     if (missionState(mission) === 'locked') {
       setToast(`Completa la mision ${mission.order - 1} para desbloquear este desafio.`)
       return
@@ -111,21 +164,61 @@ function App() {
     setToast('+25 puntos preventivos. Reportar protege a todo el equipo.')
   }
 
+  const completeFieldScan = () => {
+    if (!scanComplete) setProgress((current) => ({ ...current, scans: current.scans + 1 }))
+    setScanComplete(true)
+  }
+
   const issueCertificate = () => {
     if (!evidence.every((item) => selectedMission.evidence.includes(item)) || evidence.length !== selectedMission.evidence.length) return
     const isNew = !progress.completed.includes(selectedMission.id)
+    const activeChallenge = challenges.find((challenge) => (
+      challenge.missionId === selectedMission.id
+      && progress.acceptedChallenges.includes(challenge.id)
+      && !progress.completedChallenges.includes(challenge.id)
+    ))
     setProgress((current) => ({
       ...current,
       completed: isNew ? [...current.completed, selectedMission.id] : current.completed,
-      points: isNew ? current.points + selectedMission.reward : current.points,
+      points: current.points + (isNew ? selectedMission.reward : 0) + (activeChallenge?.reward ?? 0),
       certificates: isNew ? current.certificates + 1 : current.certificates,
+      collaborations: activeChallenge ? current.collaborations + 1 : current.collaborations,
+      completedChallenges: activeChallenge ? [...current.completedChallenges, activeChallenge.id] : current.completedChallenges,
+      unlockedBadges: activeChallenge ? [...new Set([...current.unlockedBadges, activeChallenge.badge])] : current.unlockedBadges,
     }))
     setPhase('certificate')
-    setToast(isNew ? `Certificado emitido. +${selectedMission.reward} puntos cooperativos.` : 'Mision revisada correctamente.')
+    if (activeChallenge) setToast(`Mision y desafio completados. +${selectedMission.reward + activeChallenge.reward} puntos cooperativos.`)
+    else setToast(isNew ? `Certificado emitido. +${selectedMission.reward} puntos cooperativos.` : 'Mision revisada correctamente.')
   }
 
-  const shareLearning = () => {
-    setProgress((current) => ({ ...current, collaborations: current.collaborations + 1, points: current.points + 40 }))
+  const acceptChallenge = (challenge: Challenge) => {
+    const challengeMission = missions.find((mission) => mission.id === challenge.missionId)
+    if (!challengeMission) return
+    if (missionState(challengeMission) === 'locked') {
+      setToast(`Este desafio se habilita al completar la mision ${challengeMission.order - 1}.`)
+      return
+    }
+    setProgress((current) => ({
+      ...current,
+      acceptedChallenges: current.acceptedChallenges.includes(challenge.id)
+        ? current.acceptedChallenges
+        : [...current.acceptedChallenges, challenge.id],
+    }))
+    setToast(`Desafio aceptado: ${challenge.title}. La seguridad se mide por calidad, no por velocidad.`)
+    openMission(challengeMission)
+  }
+
+  const shareLearning = (missionId?: string) => {
+    if (missionId && progress.sharedMissions.includes(missionId)) {
+      setToast('Este aprendizaje ya fue compartido con otra cuadrilla.')
+      return
+    }
+    setProgress((current) => ({
+      ...current,
+      collaborations: current.collaborations + 1,
+      points: current.points + 40,
+      sharedMissions: missionId ? [...current.sharedMissions, missionId] : current.sharedMissions,
+    }))
     setToast('+40 puntos de colaboracion. El aprendizaje ya puede ayudar a otra cuadrilla.')
   }
 
@@ -156,7 +249,7 @@ function App() {
         </nav>
         <div className="player-status">
           <span className="player-avatar">CM</span>
-          <span><strong>Carlos Medina</strong><small>Operario de Trinca · Buenos Aires</small></span>
+          <span><strong>Carlos Medina</strong><small>Operario de Trinca · Nivel {playerLevel}</small></span>
           <span className="points">{progress.points.toLocaleString('es-AR')} pts</span>
         </div>
         <button className="icon-button menu-button" type="button" onClick={() => setMobileNav(!mobileNav)} aria-label="Abrir menu">
@@ -172,6 +265,7 @@ function App() {
             missionState={missionState}
             openMission={openMission}
             setView={goTo}
+            role={activeRole}
             reportRisk={() => {
               setProgress((current) => ({ ...current, reports: current.reports + 1, points: current.points + 25 }))
               setToast('+25 puntos preventivos. El reporte fue registrado.')
@@ -193,13 +287,26 @@ function App() {
             chooseDecision={chooseDecision}
             activateStopWork={activateStopWork}
             setEvidence={setEvidence}
+            scanComplete={scanComplete}
+            selectedPpe={selectedPpe}
+            completeFieldScan={completeFieldScan}
+            togglePpe={(id) => setSelectedPpe((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
             issueCertificate={issueCertificate}
-            shareLearning={shareLearning}
+            shareLearning={() => shareLearning(selectedMission.id)}
+            role={activeRole}
             nextMission={() => {
               const next = missions[selectedMission.order]
               if (next) openMission(next)
               else goTo('world')
             }}
+          />
+        )}
+        {view === 'challenges' && (
+          <ChallengesView
+            progress={progress}
+            missionState={missionState}
+            acceptChallenge={acceptChallenge}
+            openMission={openMission}
           />
         )}
         {view === 'rules' && <RulesView start={() => openMission(missions[Math.min(completedCount, missions.length - 1)])} />}
@@ -228,10 +335,11 @@ interface MapViewProps {
   missionState: (mission: Mission) => MissionState
   openMission: (mission: Mission) => void
   setView: (view: View) => void
+  role: RoleProfile
   reportRisk: () => void
 }
 
-function MapView({ progress, globalProgress, missionState, openMission, setView, reportRisk }: MapViewProps) {
+function MapView({ progress, globalProgress, missionState, openMission, setView, role, reportRisk }: MapViewProps) {
   const [mapMode, setMapMode] = useState<'3d' | '2d'>('3d')
   const nextMission = missions.find((mission) => missionState(mission) === 'available') ?? missions[0]
   return (
@@ -246,6 +354,7 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
           <div className="hero-actions">
             <button className="primary" type="button" onClick={() => openMission(nextMission)}><Zap size={19} /> Jugar mision {nextMission.order}</button>
             <button className="secondary" type="button" onClick={() => setView('rules')}><BookOpen size={19} /> Ver reglas</button>
+            <button className="secondary" type="button" onClick={() => setView('challenges')}><Swords size={19} /> Desafiar al equipo</button>
           </div>
         </div>
         <aside className="mission-now">
@@ -257,6 +366,7 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
           <span><strong>{progress.completed.length}/8</strong> zonas verdes</span>
           <span><strong>{progress.certificates}</strong> certificados</span>
           <span><strong>{progress.reports}</strong> riesgos reportados</span>
+          <span><strong>{progress.scans}</strong> escaneos de campo</span>
           <span><strong>{globalProgress}%</strong> campana</span>
         </div>
       </section>
@@ -270,6 +380,13 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
               <button className={mapMode === '3d' ? 'active' : ''} type="button" onClick={() => setMapMode('3d')}><Cuboid /> 3D</button>
               <button className={mapMode === '2d' ? 'active' : ''} type="button" onClick={() => setMapMode('2d')}><Map /> 2D</button>
             </div>
+          </div>
+        </div>
+        <div className="role-route" aria-label="Ruta de aprendizaje asignada">
+          <div className="role-route-heading"><span className="eyebrow">RUTA POR ROL</span><strong>{role.name}</strong><small>{role.terminal} · {role.campaign} · {role.visibleDimensions.length} dimensiones de ruta · {role.informationalDimensions.length} informativas</small></div>
+          <div className="role-route-groups">
+            <div><span>MODULOS OBLIGATORIOS</span><div>{role.mandatoryModules.map((module) => <b key={module}>{module}</b>)}</div></div>
+            <div><span>CONDICIONALES</span><div>{role.conditionalModules.map((module) => <b className="conditional" key={module}>{module}</b>)}</div></div>
           </div>
         </div>
         <div className="map-layout">
@@ -293,7 +410,7 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
                       aria-label={`${mission.title}. Estado: ${state}`}
                       title={mission.title}
                     >
-                      {state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <Check /> : <Target />}
+                      {state === 'not-applicable' ? <X /> : state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <Check /> : <Target />}
                       <span>{mission.order}</span>
                     </button>
                   )
@@ -310,7 +427,7 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
                 <button key={mission.id} type="button" onClick={() => openMission(mission)} className={`mission-row ${state}`}>
                   <span className="mission-index">{String(mission.order).padStart(2, '0')}</span>
                   <span><strong>{mission.shortTitle}</strong><small>{mission.subtitle}</small></span>
-                  <span className="mission-state">{state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <ShieldCheck /> : <ArrowRight />}</span>
+                  <span className="mission-state">{state === 'not-applicable' ? <X /> : state === 'locked' ? <LockKeyhole /> : state === 'completed' || state === 'sustained' ? <ShieldCheck /> : <ArrowRight />}</span>
                 </button>
               )
             })}
@@ -337,6 +454,8 @@ interface PlayerProps {
   setSelectedHazards: (value: string[]) => void; chooseDecision: (safe: boolean, feedback: string) => void
   activateStopWork: () => void; setEvidence: (value: string[]) => void; issueCertificate: () => void
   shareLearning: () => void; nextMission: () => void
+  scanComplete: boolean; selectedPpe: PPEId[]; completeFieldScan: () => void; togglePpe: (id: PPEId) => void
+  role: RoleProfile
 }
 
 function MissionPlayer(props: PlayerProps) {
@@ -352,7 +471,7 @@ function MissionPlayer(props: PlayerProps) {
     <section className="mission-player">
       <header className="mission-header">
         <button className="back-button" type="button" onClick={props.onBack}><ArrowLeft /> Volver al mapa</button>
-        <div><span className="eyebrow">Mision {String(mission.order).padStart(2, '0')} · FATAL 5</span><h1>{mission.title}</h1><p>{mission.subtitle}</p></div>
+        <div><span className="eyebrow">Mision {String(mission.order).padStart(2, '0')} · FATAL 5</span><h1>{mission.title}</h1><p>{mission.subtitle} · Ruta: {props.role.name}</p></div>
         <div className="mission-reward"><Award /><span><small>RECOMPENSA</small><strong>+{mission.reward} pts</strong></span></div>
       </header>
 
@@ -364,7 +483,16 @@ function MissionPlayer(props: PlayerProps) {
         ))}
       </div>
 
-      <div className="mission-stage">
+      {phase === 'scan' ? (
+        <ARScanner
+          mission={mission}
+          selectedPpe={props.selectedPpe}
+          scanComplete={props.scanComplete}
+          onTogglePpe={props.togglePpe}
+          onScanComplete={props.completeFieldScan}
+          onContinue={() => props.setPhase('hazards')}
+        />
+      ) : <div className="mission-stage">
         <div className="mission-visual">
           <img src={mission.image} alt={`Escenario de ${mission.title}`} />
           <div className="visual-shade" />
@@ -379,16 +507,20 @@ function MissionPlayer(props: PlayerProps) {
               <span className="panel-kicker"><BookOpen /> CONOCE EL PASADO</span>
               <h2>{mission.objective}</h2>
               <p>{mission.briefing}</p>
+              <div className="role-context"><strong>Tu ruta por rol</strong><span>{props.role.name} · Esta mision aplica directamente a tu trabajo.</span></div>
               <div className="briefing-rule"><Shield /><span><strong>Regla de oro</strong>Si falta un control critico, la tarea no comienza.</span></div>
-              <button className="primary wide" onClick={() => props.setPhase('hazards')}>Explorar escenario <ArrowRight /></button>
+              <div className="device-modes" aria-label="Experiencia disponible por dispositivo">
+                <span><Monitor /> PC</span><span><Smartphone /> Mobile</span><span><ScanLine /> AR Field Scan</span>
+              </div>
+              <button className="primary wide" onClick={() => props.setPhase('scan')}>Escanear escenario <ScanLine /></button>
             </div>
           )}
 
           {phase === 'hazards' && (
             <div className="panel-content">
               <span className="panel-kicker"><Eye /> EXPLORA</span>
-              <h2>Identifica los tres riesgos que requieren control.</h2>
-              <p>Selecciona todos los riesgos relevantes. Detectar antes es parte de la competencia.</p>
+              <h2>Confirma los tres riesgos que requieren control.</h2>
+              <p>La asistencia visual sugiere. Tu criterio confirma antes de decidir.</p>
               <div className="option-list">
                 {mission.hazards.map((hazard) => (
                   <button key={hazard.id} className={props.selectedHazards.includes(hazard.id) ? 'selected' : ''} onClick={() => toggle(hazard.id, props.selectedHazards, props.setSelectedHazards)}>
@@ -447,7 +579,7 @@ function MissionPlayer(props: PlayerProps) {
                 <p>Otorgado a</p><strong>Carlos Medina</strong>
                 <small>por completar la mision {mission.order}: {mission.title}</small>
                 <div className="certificate-seal"><Medal /></div>
-                <div className="certificate-meta"><span>Terminal Callao</span><span>Prototipo educativo</span><span>FZ-{mission.order}2026</span></div>
+                <div className="certificate-meta"><span>APM Buenos Aires</span><span>Prototipo educativo</span><span>FZ-{mission.order}2026</span></div>
               </div>
               <p className="certificate-note">Este reconocimiento no sustituye permisos, habilitaciones ni validacion HSSE local.</p>
               <button className="primary wide" onClick={() => props.setPhase('debrief')}>Ver impacto en las 9D <ArrowRight /></button>
@@ -457,12 +589,25 @@ function MissionPlayer(props: PlayerProps) {
           {phase === 'debrief' && (
             <div className="panel-content">
               <span className="panel-kicker"><Shield /> CONTROLA EL PRESENTE</span>
-              <h2>Tu accion fortalecio {mission.dimensions.length} dimensiones.</h2>
-              <p>El resultado no queda aislado: se convierte en capacidad, evidencia y aprendizaje reutilizable.</p>
+              <h2>Tu accion fortalecio {mission.primaryDimensions.length} capacidades directas.</h2>
+              <p>La ruta se adapta a tu rol. El ecosistema toma esa accion segura y la convierte en aprendizaje reutilizable.</p>
+              <span className="debrief-label">IMPACTO DIRECTO DE TU ROL</span>
               <div className="debrief-grid">
-                {mission.dimensions.map((id) => <DimensionChip key={id} id={id} />)}
+                {mission.primaryDimensions.map((id) => <DimensionChip key={id} id={id} variant="primary" />)}
               </div>
-              <div className="world-contribution"><Trophy /><span><small>APORTE WORLD CUP</small><strong>+{mission.reward} puntos · 1 zona convertida a verde</strong></span></div>
+              <span className="debrief-label">IMPACTO INFORMATIVO DEL ECOSISTEMA</span>
+              <div className="debrief-grid supporting-dimensions">
+                {mission.supportingDimensions.map((id) => <DimensionChip key={id} id={id} variant="supporting" />)}
+              </div>
+              <div className="collaboration-card"><Users /><span><small>{mission.collaboration.title}</small><strong>{mission.collaboration.description}</strong><em>{mission.collaboration.impact}</em></span></div>
+              <div className="world-contribution"><Trophy /><span><small>APORTE WORLD CUP</small><strong>+{mission.reward} puntos · 1 zona convertida a verde · aprendizaje compartible</strong></span></div>
+              <div className="cause-chain" aria-label="Cadena de impacto de la mision">
+                <span><ScanLine /><b>Detectaste</b></span><i><ArrowRight /></i>
+                <span><ShieldCheck /><b>Controlaste</b></span><i><ArrowRight /></i>
+                <span><Award /><b>Certificaste</b></span><i><ArrowRight /></i>
+                <span><Users /><b>Compartiste</b></span><i><ArrowRight /></i>
+                <span><Trophy /><b>Escalaste</b></span>
+              </div>
               <div className="decision-actions">
                 <button className="secondary" onClick={props.shareLearning}><Users /> Compartir aprendizaje</button>
                 <button className="primary" onClick={props.nextMission}>Siguiente mision <ArrowRight /></button>
@@ -470,14 +615,15 @@ function MissionPlayer(props: PlayerProps) {
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </section>
   )
 }
 
-function DimensionChip({ id }: { id: DimensionId }) {
+function DimensionChip({ id, variant }: { id: DimensionId; variant: 'primary' | 'supporting' }) {
   const dimension = dimensions[id]
-  return <div className="dimension-chip"><span>{dimension.number}</span><div><strong>{dimension.name}</strong><small>{dimension.value}</small></div></div>
+  const variantClass = variant === 'primary' ? 'direct' : 'supporting'
+  return <div className={`dimension-chip ${variantClass}`}><span>{dimension.number}</span><div><strong>{dimension.name}</strong><small>{dimension.value}</small></div></div>
 }
 
 function RulesView({ start }: { start: () => void }) {
@@ -504,6 +650,124 @@ function RulesView({ start }: { start: () => void }) {
       <div className="score-model">
         <div><span className="eyebrow">Competencia cooperativa</span><h2>Se reconoce la contribucion, no la ausencia artificial de reportes.</h2></div>
         {[['Competencia demostrada', 30], ['Prevencion verificada', 25], ['Colaboracion y mentoria', 20], ['Controles sostenidos', 15], ['Conocimiento compartido', 10]].map(([label, value]) => <div className="score-row" key={String(label)}><span>{label}</span><i><b style={{ width: `${value}%` }} /></i><strong>{value}%</strong></div>)}
+      </div>
+    </section>
+  )
+}
+
+function ChallengesView({
+  progress, missionState, acceptChallenge, openMission,
+}: {
+  progress: GameProgress
+  missionState: (mission: Mission) => MissionState
+  acceptChallenge: (challenge: Challenge) => void
+  openMission: (mission: Mission) => void
+}) {
+  const [rankingScope, setRankingScope] = useState<'personas' | 'equipos' | 'terminales'>('personas')
+  const level = 7 + Math.floor(Math.max(0, progress.points - initialProgress.points) / 600)
+  const nextLevel = initialProgress.points + (level - 6) * 600
+  const levelProgress = Math.min(100, Math.round(((progress.points - (nextLevel - 600)) / 600) * 100))
+  const rankings = {
+    personas: [
+      ['01', 'Lucia Torres', 'Supervisora · Trinca A', '3.180'],
+      ['02', 'Mateo Silva', 'Operario · Trinca C', '2.940'],
+      ['03', 'Carlos Medina', 'Tu perfil · Trinca B', progress.points.toLocaleString('es-AR')],
+      ['04', 'Ana Rojas', 'Operaria · Muelle', '2.280'],
+    ],
+    equipos: [
+      ['01', 'Trinca A', 'Turno noche', '18.420'],
+      ['02', 'Trinca B', 'Tu cuadrilla', '17.860'],
+      ['03', 'Acceso seguro', 'Turno manana', '16.990'],
+      ['04', 'Muelle Sur', 'Equipo mixto', '15.730'],
+    ],
+    terminales: [
+      ['01', 'Buenos Aires', 'Argentina', '48.250'],
+      ['02', 'Callao', 'Peru', '44.780'],
+      ['03', 'Moin', 'Costa Rica', '42.340'],
+      ['04', 'Quetzal', 'Guatemala', '39.820'],
+    ],
+  }
+
+  return (
+    <section className="content-view challenges-view">
+      <div className="challenge-hero">
+        <img src={asset('lashing-5.png')} alt="Cuadrilla de trinca colaborando en una terminal" />
+        <div className="challenge-hero-shade" />
+        <div className="challenge-hero-copy">
+          <span className="eyebrow">FATALZERO · MISION COOPERATIVA</span>
+          <h1>Desafia a tu equipo.<br />Protejan una zona juntos.</h1>
+          <p>Los desafios reconocen deteccion, competencia y ayuda. La rapidez no entrega ventajas en tareas criticas.</p>
+          <div className="level-line"><span>NIVEL {level}</span><i><b style={{ width: `${levelProgress}%` }} /></i><strong>{progress.points.toLocaleString('es-AR')} XP</strong></div>
+        </div>
+        <div className="challenge-device-strip" aria-label="Experiencia conectada entre dispositivos">
+          <span><Monitor /> Juega en PC</span><span><Smartphone /> Continua en mobile</span><span><ScanLine /> Verifica con AR</span>
+        </div>
+      </div>
+
+      <div className="challenge-layout">
+        <div className="challenge-board">
+          <div className="section-heading">
+            <div><span className="eyebrow">INVITACIONES Y MISIONES DE EQUIPO</span><h2>Una accion segura activa la siguiente.</h2></div>
+            <span className="prototype-label">Illustrative prototype data</span>
+          </div>
+          <div className="challenge-cards">
+            {challenges.map((challenge) => {
+              const mission = missions.find((item) => item.id === challenge.missionId)!
+              const state = missionState(mission)
+              const accepted = progress.acceptedChallenges.includes(challenge.id)
+              const completed = progress.completedChallenges.includes(challenge.id)
+              return (
+                <article className={`challenge-card ${completed ? 'completed' : accepted ? 'accepted' : ''}`} key={challenge.id}>
+                  <div className="challenge-card-top"><span>{challenge.type === 'team' ? <Users /> : <Swords />}{challenge.subtitle}</span><b>+{challenge.reward} pts</b></div>
+                  <h3>{challenge.title}</h3>
+                  <p>{challenge.target}</p>
+                  <div className="challenge-meta"><span><Users /> {challenge.participants} participantes</span><span><Award /> {challenge.badge}</span></div>
+                  <div className="challenge-state-line"><i className={state} /><span>Mision {mission.order} · {mission.shortTitle}</span><b>{completed ? 'LOGRADO' : accepted ? 'ACTIVO' : state === 'locked' ? 'BLOQUEADO' : 'DISPONIBLE'}</b></div>
+                  <button
+                    className={completed ? 'secondary wide' : 'primary wide'}
+                    type="button"
+                    disabled={completed || state === 'locked'}
+                    onClick={() => accepted ? openMission(mission) : acceptChallenge(challenge)}
+                  >
+                    {completed ? <><Check /> Reconocimiento obtenido</> : accepted ? <><Gamepad2 /> Continuar desafio</> : <><Swords /> Aceptar desafio</>}
+                  </button>
+                </article>
+              )
+            })}
+          </div>
+        </div>
+
+        <aside className="weekly-ranking">
+          <div className="ranking-heading"><span className="eyebrow">RANKING SEMANAL</span><Crown /></div>
+          <div className="ranking-switch" aria-label="Cambiar alcance del ranking">
+            {(['personas', 'equipos', 'terminales'] as const).map((scope) => <button key={scope} className={rankingScope === scope ? 'active' : ''} onClick={() => setRankingScope(scope)}>{scope}</button>)}
+          </div>
+          <p>La posicion combina competencia, prevencion, colaboracion y controles sostenidos.</p>
+          <div className="challenge-ranking-list">
+            {rankings[rankingScope].map(([rank, name, detail, points]) => (
+              <div className={name.includes('Carlos') || detail.includes('Tu ') ? 'player' : ''} key={name}>
+                <strong>{rank}</strong><span><b>{name}</b><small>{detail}</small></span><em>{points}</em>
+              </div>
+            ))}
+          </div>
+          <div className="ranking-guardrail"><ShieldCheck /><span><strong>Ranking seguro</strong><small>Reportar mas nunca baja tu posicion. Ocultar un riesgo no genera puntos.</small></span></div>
+        </aside>
+      </div>
+
+      <div className="safe-score-band">
+        <div><span className="eyebrow">COMO SE CALCULA LA CONTRIBUCION</span><h2>La calidad de la accion vale mas que la velocidad.</h2></div>
+        {[['Competencia', 30], ['Prevencion', 25], ['Colaboracion', 20], ['Control sostenido', 15], ['Conocimiento', 10]].map(([label, value]) => (
+          <span key={String(label)}><b>{value}%</b><small>{label}</small></span>
+        ))}
+      </div>
+
+      <div className="unlock-story" aria-label="Cadena de desbloqueo y recompensa">
+        <span><ScanLine /><b>Escanea</b><small>Detecta una condicion</small></span><ArrowRight />
+        <span><Hand /><b>Interviene</b><small>Controla o detiene</small></span><ArrowRight />
+        <span><ShieldCheck /><b>Demuestra</b><small>Registra evidencia</small></span><ArrowRight />
+        <span><Award /><b>Desbloquea</b><small>Certificado y zona</small></span><ArrowRight />
+        <span><Users /><b>Multiplica</b><small>Ayuda a otra cuadrilla</small></span><ArrowRight />
+        <span><Trophy /><b>Avanza</b><small>World Cup + 9D</small></span>
       </div>
     </section>
   )
@@ -560,10 +824,10 @@ function WorldView({ progress, globalProgress, share }: { progress: GameProgress
       <div className="world-grid">
         <div className="world-map-panel"><img src={asset('world-cup.png')} alt="Red mundial de terminales participantes" /><div className="world-map-overlay"><span>Illustrative prototype data</span><strong>Conocimiento que viaja. Controles que se fortalecen.</strong></div></div>
         <div className="ranking-panel"><span className="eyebrow">Ranking de contribucion</span><h2>Terminales que comparten para avanzar.</h2>{[
-          ['01', 'APM Terminals Callao', 'Americas', '12.450'],
+          ['01', 'APM Terminals Buenos Aires', 'Americas', '12.450'],
           ['02', 'Brasil Terminal Portuario', 'Americas', '11.980'],
           ['03', 'APM Terminals Moin', 'Americas', '11.620'],
-          ['08', 'Tu cuadrilla · Callao', 'Trinca B', progress.points.toLocaleString('es-AR')],
+          ['08', 'Tu cuadrilla · Buenos Aires', 'Trinca B', progress.points.toLocaleString('es-AR')],
         ].map(([rank, name, region, points]) => <div className={rank === '08' ? 'rank-row player' : 'rank-row'} key={name}><strong>{rank}</strong><span><b>{name}</b><small>{region}</small></span><em>{points} pts</em></div>)}</div>
       </div>
       <div className="five-years"><span className="eyebrow">El camino de cinco anos</span><h2>Del FATAL 5 al FATAL ZERO.</h2><div>{[['2027', 'FATAL 5', 'Fundar la memoria'], ['2028', 'FATAL 4', 'Entrenar capacidades'], ['2029', 'FATAL 3', 'Anticipar riesgos'], ['2030', 'FATAL 2', 'Medir y cooperar'], ['2031', 'FATAL ZERO', 'Sostener y liderar']].map(([year, fatal, goal], index) => <article key={year}><span>{year}</span><strong>{fatal}</strong><p>{goal}</p><i className={index === 0 ? 'active' : ''} /></article>)}</div></div>

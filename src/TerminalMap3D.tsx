@@ -1,7 +1,7 @@
-import { Suspense, useMemo, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Bounds, Center, Html, OrbitControls, useGLTF, useProgress } from '@react-three/drei'
-import { MousePointer2, Pause, Play, RotateCcw } from 'lucide-react'
+import { Maximize2, MousePointer2, Pause, Play, RotateCcw } from 'lucide-react'
 import type { Mission, MissionState } from './types'
 
 const modelUrl = `${import.meta.env.BASE_URL}assets/3d/apm-terminal-buenos-aires.glb`
@@ -66,9 +66,27 @@ function TerminalModel({ missions, missionState, openMission }: TerminalMap3DPro
 export default function TerminalMap3D(props: TerminalMap3DProps) {
   const [autoRotate, setAutoRotate] = useState(true)
   const [cameraKey, setCameraKey] = useState(0)
+  const stageRef = useRef<HTMLDivElement>(null)
+
+  const toggleFullscreen = async () => {
+    if (document.fullscreenElement) await document.exitFullscreen()
+    else await stageRef.current?.requestFullscreen()
+  }
+
+  useEffect(() => {
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && document.fullscreenElement) {
+        void document.exitFullscreen()
+        return
+      }
+      if (event.key.toLowerCase() === 'f' && !event.ctrlKey && !event.metaKey && !event.altKey) void toggleFullscreen()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [])
 
   return (
-    <div className="map-3d-stage" onPointerEnter={() => setAutoRotate(false)}>
+    <div ref={stageRef} className="map-3d-stage" onPointerEnter={() => setAutoRotate(false)}>
       <Suspense fallback={<LoadingStatus />}>
         <Canvas
           key={cameraKey}
@@ -99,8 +117,9 @@ export default function TerminalMap3D(props: TerminalMap3DProps) {
           {autoRotate ? <Pause /> : <Play />}
         </button>
         <button type="button" onClick={() => setCameraKey((value) => value + 1)} title="Restablecer camara"><RotateCcw /></button>
+        <button type="button" onClick={() => void toggleFullscreen()} title="Pantalla completa (F)"><Maximize2 /></button>
       </div>
-      <div className="map-3d-help"><MousePointer2 /> Arrastra para rotar · rueda para acercar · selecciona un nodo</div>
+      <div className="map-3d-help"><MousePointer2 /> Arrastra para rotar · rueda para acercar · F pantalla completa</div>
     </div>
   )
 }

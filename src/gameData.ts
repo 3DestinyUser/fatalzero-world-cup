@@ -1,4 +1,4 @@
-import type { DimensionId, Mission } from './types'
+import type { Challenge, DimensionId, Mission, PPEItem, RoleProfile } from './types'
 
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
 
@@ -14,6 +14,45 @@ export const dimensions: Record<DimensionId, { number: number; name: string; val
   regional: { number: 9, name: 'Regional Analytics', value: 'Aprendizaje que escala' },
 }
 
+export const activeRole: RoleProfile = {
+  id: 'operator-lashing',
+  name: 'Operario de Trinca y Destrinca',
+  terminal: 'APM Terminals Buenos Aires',
+  campaign: 'Trinca y Destrinca Segura',
+  mandatoryModules: [
+    'Inspeccion de pasarela', 'Transportes', 'Cargas suspendidas',
+    'Combate de incendios', 'Trinca y destrinca', 'Trabajo en jaula',
+  ],
+  conditionalModules: ['Trabajos en altura', 'Energia almacenada', 'Contratistas'],
+  visibleDimensions: ['culture', 'prevent', 'training', 'immersive', 'operational'],
+  informationalDimensions: ['knowledge', 'advisor', 'intelligence', 'regional'],
+}
+
+export const ppeCatalog: PPEItem[] = [
+  { id: 'helmet', name: 'Casco', power: 'Protege tu mente', description: 'Proteccion superior e inspeccion previa al ingreso.' },
+  { id: 'glasses', name: 'Gafas', power: 'Vision segura', description: 'Proteccion frente a particulas y liberaciones.' },
+  { id: 'gloves', name: 'Guantes', power: 'Manos seguras', description: 'Proteccion adecuada sin entrar en puntos de atrapamiento.' },
+  { id: 'boots', name: 'Calzado', power: 'Deja huellas', description: 'Adherencia y ruta segura sobre superficies portuarias.' },
+  { id: 'vest', name: 'Chaleco', power: 'Hazte visible', description: 'Visibilidad frente a equipos y otras cuadrillas.' },
+  { id: 'hearing', name: 'Proteccion auditiva', power: 'Escucha el control', description: 'Reduce exposicion sin perder la comunicacion critica.' },
+  { id: 'loto', name: 'LOTO', power: 'Asegura y desbloquea', description: 'Aisla energia, verifica cero energia y habilita trabajo seguro.' },
+]
+
+export const challenges: Challenge[] = [
+  {
+    id: 'team-safe-access', title: 'Cuadrilla lista para subir', subtitle: 'Desafio semanal · Trinca B', missionId: 'access',
+    type: 'team', reward: 140, participants: 7, target: 'Completar acceso seguro, reportar un hallazgo y compartir el checklist.', badge: 'Equipo que anticipa',
+  },
+  {
+    id: 'peer-hands', title: 'Manos fuera del peligro', subtitle: 'Desafio amistoso · Carlos vs. Lucia', missionId: 'hands',
+    type: 'peer', reward: 120, participants: 2, target: 'Demostrar todos los controles sin una decision critica peligrosa.', badge: 'Guardian de manos',
+  },
+  {
+    id: 'team-line-fire', title: 'Cero personas en linea de fuego', subtitle: 'Mision de terminal · Buenos Aires', missionId: 'release',
+    type: 'team', reward: 180, participants: 18, target: 'Marcar la trayectoria, activar Stop Work y dejar evidencia reutilizable.', badge: 'Control de energia',
+  },
+]
+
 export const gameRules = [
   'La velocidad nunca entrega puntos en tareas criticas.',
   'Reportar un riesgo suma. Ocultarlo nunca beneficia.',
@@ -28,14 +67,18 @@ export const gameRules = [
 ]
 
 const mission = (
-  value: Omit<Mission, 'hazards' | 'requiredHazards' | 'decisions' | 'evidence'> & {
+  value: Omit<Mission, 'hazards' | 'requiredHazards' | 'decisions' | 'evidence' | 'dimensions' | 'primaryDimensions' | 'supportingDimensions' | 'collaboration'> & {
     risks: [string, string, string, string]
     safe: string
     unsafe: [string, string]
     evidence: [string, string, string]
+    primaryDimensions: DimensionId[]
+    supportingDimensions: DimensionId[]
+    collaboration: Mission['collaboration']
   },
 ): Mission => ({
   ...value,
+  dimensions: [...new Set([...value.primaryDimensions, ...value.supportingDimensions])],
   hazards: value.risks.map((label, index) => ({ id: `risk-${index}`, label })),
   requiredHazards: ['risk-0', 'risk-1', 'risk-2'],
   decisions: [
@@ -57,7 +100,9 @@ export const missions: Mission[] = [
     safe: 'Detener el ingreso, informar y verificar controles',
     unsafe: ['Ingresar despacio para no retrasar la operacion', 'Seguir al companero que ya ingreso'],
     evidence: ['Checklist de pasarela', 'Confirmacion de clima', 'Autorizacion de ingreso'],
-    dimensions: ['culture', 'prevent', 'training', 'operational'], certificate: 'Safe Vessel Access', reward: 180,
+    requiredPpe: ['helmet', 'boots', 'vest'], criticalControls: ['Pasarela inspeccionada', 'Condiciones climaticas verificadas', 'Ingreso coordinado con la cuadrilla'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor', 'regional'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el checklist de acceso', description: 'Tu confirmacion de pasarela puede ayudar a la siguiente cuadrilla antes de subir al buque.', impact: 'El aprendizaje queda disponible para otros turnos.' }, certificate: 'Safe Vessel Access', reward: 180,
   }),
   mission({
     id: 'steel', order: 2, title: 'El peso del acero', shortTitle: 'Peso del acero',
@@ -69,7 +114,9 @@ export const missions: Mission[] = [
     safe: 'Alinear el cuerpo, usar piernas y pedir apoyo si hace falta',
     unsafe: ['Levantar rapido para reducir el tiempo bajo carga', 'Flexionar la espalda para acercarse a la barra'],
     evidence: ['Autoevaluacion de fatiga', 'Demostracion de postura', 'Ruta despejada'],
-    dimensions: ['culture', 'prevent', 'training', 'immersive'], certificate: 'Lashing Ergonomics', reward: 200,
+    requiredPpe: ['helmet', 'gloves', 'boots'], criticalControls: ['Evaluacion de fatiga', 'Tecnica de levantamiento controlada', 'Apoyo de la cuadrilla cuando corresponde'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['knowledge', 'advisor', 'operational'],
+    applicableRoles: ['operator-lashing', 'supervisor'], collaboration: { title: 'Comparte una tecnica de postura', description: 'Ayuda a otra persona a levantar la barra usando piernas, control y apoyo de la cuadrilla.', impact: 'Una buena tecnica se convierte en habito colectivo.' }, certificate: 'Lashing Ergonomics', reward: 200,
   }),
   mission({
     id: 'hands', order: 3, title: 'Manos fuera del peligro', shortTitle: 'Manos seguras',
@@ -81,7 +128,9 @@ export const missions: Mission[] = [
     safe: 'Manos sobre el cuerpo exterior y dedos fuera del ojal',
     unsafe: ['Usar un dedo para alinear el pasador', 'Confiar en que el guante evita el atrapamiento'],
     evidence: ['Puntos de pellizco identificados', 'Tecnica demostrada', 'Validacion de supervisor'],
-    dimensions: ['prevent', 'training', 'knowledge', 'immersive', 'operational'], certificate: 'Hands in Control', reward: 240,
+    requiredPpe: ['helmet', 'glasses', 'gloves', 'boots'], criticalControls: ['Dedos fuera del ojal y pasador', 'Tension controlada antes de intervenir', 'Posicion corporal fuera de la trayectoria'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['knowledge', 'advisor', 'operational'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el punto de atrapamiento', description: 'Registra donde deben mantenerse las manos fuera del tensor para que el equipo aprenda antes de intervenir.', impact: 'El hallazgo alimenta Knowledge y previene la repeticion.' }, certificate: 'Hands in Control', reward: 240,
   }),
   mission({
     id: 'release', order: 4, title: 'Liberacion brusca', shortTitle: 'Linea de fuego',
@@ -93,7 +142,9 @@ export const missions: Mission[] = [
     safe: 'Detener, verificar tension y reposicionarse fuera de trayectoria',
     unsafe: ['Acercar el rostro para observar el mecanismo', 'Continuar porque casco y gafas brindan proteccion'],
     evidence: ['Trayectoria marcada', 'Posicion segura seleccionada', 'Briefing de liberacion'],
-    dimensions: ['culture', 'prevent', 'intelligence', 'advisor', 'immersive'], certificate: 'Line of Fire Control', reward: 260,
+    requiredPpe: ['helmet', 'glasses', 'gloves', 'boots'], criticalControls: ['Energia acumulada evaluada', 'Linea de fuego delimitada', 'Liberacion coordinada y controlada'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['intelligence', 'advisor', 'knowledge', 'operational', 'regional'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte la trayectoria segura', description: 'Marca la linea de fuego y deja una referencia para que otra cuadrilla pueda posicionarse mejor.', impact: 'Una decision local puede convertirse en una barrera regional.' }, certificate: 'Line of Fire Control', reward: 260,
   }),
   mission({
     id: 'eyes', order: 5, title: 'Proteccion ocular', shortTitle: 'Proteccion ocular',
@@ -105,7 +156,9 @@ export const missions: Mission[] = [
     safe: 'Ajustar y verificar todo el EPP antes de ingresar',
     unsafe: ['Ingresar y ajustar las gafas si aparece polvo', 'Apartar la mirada durante la liberacion'],
     evidence: ['Inspeccion visual de EPP', 'Ajuste confirmado', 'Registro previo al ingreso'],
-    dimensions: ['culture', 'prevent', 'training', 'operational'], certificate: 'Eye & Face Protection', reward: 160,
+    requiredPpe: ['helmet', 'glasses', 'gloves'], criticalControls: ['EPP inspeccionado y ajustado', 'Zona de proyeccion identificada', 'Ingreso posterior a la verificacion'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor'],
+    applicableRoles: ['operator-lashing', 'supervisor'], collaboration: { title: 'Comparte una verificacion de EPP', description: 'Ayuda a tu equipo a revisar gafas, casco y barbijo antes de entrar en la zona.', impact: 'La proteccion correcta se vuelve una practica visible.' }, certificate: 'Eye & Face Protection', reward: 160,
   }),
   mission({
     id: 'suspended', order: 6, title: 'Cargas suspendidas', shortTitle: 'Carga suspendida',
@@ -117,7 +170,9 @@ export const missions: Mission[] = [
     safe: 'Permanecer fuera, confirmar exclusion y comunicacion',
     unsafe: ['Cruzar rapido antes de que llegue el spreader', 'Confiar en que el operador avisara si existe peligro'],
     evidence: ['Zona de exclusion identificada', 'Ruta alternativa', 'Comunicacion confirmada'],
-    dimensions: ['prevent', 'intelligence', 'training', 'operational', 'regional'], certificate: 'Suspended Load Awareness', reward: 280,
+    requiredPpe: ['helmet', 'vest', 'boots'], criticalControls: ['Zona de exclusion activa', 'Ruta alternativa definida', 'Comunicacion con operacion confirmada'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['intelligence', 'advisor', 'regional', 'knowledge'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte una ruta fuera de la carga', description: 'Comparte la ruta alternativa y la comunicacion confirmada con tu equipo.', impact: 'La segregacion se refuerza con conocimiento compartido.' }, certificate: 'Suspended Load Awareness', reward: 280,
   }),
   mission({
     id: 'crew', order: 7, title: 'Coordinacion de cuadrilla', shortTitle: 'Coordinacion',
@@ -129,7 +184,9 @@ export const missions: Mission[] = [
     safe: 'Activar Stop Work, reunir al equipo y reconfirmar',
     unsafe: ['Interpretar la senal y continuar con cuidado', 'Continuar porque el lider parece seguro'],
     evidence: ['Stop Work registrado', 'Briefing de cuadrilla', 'Confirmacion de roles'],
-    dimensions: ['culture', 'knowledge', 'advisor', 'operational', 'regional'], certificate: 'Crew Safety Collaboration', reward: 240,
+    requiredPpe: ['helmet', 'vest', 'hearing'], criticalControls: ['Comunicacion cerrada', 'Roles y secuencia confirmados', 'Stop Work disponible para toda la cuadrilla'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor', 'regional'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el briefing de cuadrilla', description: 'Deja una secuencia de senales y roles para que el siguiente turno comience alineado.', impact: 'Colaborar se convierte en control operativo.' }, certificate: 'Crew Safety Collaboration', reward: 240,
   }),
   mission({
     id: 'conditions', order: 8, title: 'Condiciones cambiantes', shortTitle: 'Condiciones',
@@ -141,10 +198,13 @@ export const missions: Mission[] = [
     safe: 'Pausar, reevaluar y restablecer controles',
     unsafe: ['Terminar la ultima fila antes de detener', 'Reducir el ritmo sin informar al supervisor'],
     evidence: ['Cambio reportado', 'Evaluacion actualizada', 'Autorizacion de reinicio'],
-    dimensions: ['culture', 'prevent', 'intelligence', 'advisor', 'operational', 'regional'], certificate: 'Dynamic Risk Control', reward: 300,
+    requiredPpe: ['helmet', 'glasses', 'boots', 'vest'], criticalControls: ['Condiciones reevaluadas', 'Iluminacion y adherencia suficientes', 'Reinicio autorizado despues de recuperar controles'],
+    primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['intelligence', 'advisor', 'knowledge', 'regional'],
+    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el cambio detectado', description: 'Registra la condicion cambiante y ayuda a otros a reevaluar antes de continuar.', impact: 'La adaptacion local alimenta la capacidad de anticipacion.' }, certificate: 'Dynamic Risk Control', reward: 300,
   }),
 ]
 
 export const initialProgress = {
-  completed: [], sustained: [], points: 2450, reports: 3, collaborations: 8, certificates: 0,
+  completed: [], sustained: [], points: 2450, reports: 3, collaborations: 8, sharedMissions: [],
+  acceptedChallenges: [], completedChallenges: [], unlockedBadges: [], scans: 0, certificates: 0,
 }
