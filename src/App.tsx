@@ -8,6 +8,7 @@ import {
 import { activeRole, challenges, dimensions, gameRules, initialProgress, missions } from './gameData'
 import type { Challenge, DimensionId, GameProgress, Mission, MissionState, PPEId, RoleProfile } from './types'
 import ARScanner from './ARScanner'
+import VI3WCommunicator, { type VI3WContext } from './VI3WCommunicator'
 const TerminalMap3D = lazy(() => import('./TerminalMap3D'))
 import './App.css'
 
@@ -236,6 +237,139 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const vi3wContext = useMemo<VI3WContext>(() => {
+    const nextMission = completedCount < missions.length ? missions[completedCount] : undefined
+
+    if (view === 'mission') {
+      const phaseContext: Record<Phase, Omit<VI3WContext, 'id' | 'section'>> = {
+        briefing: {
+          title: selectedMission.title,
+          summary: selectedMission.briefing,
+          challenge: selectedMission.objective,
+          priority: 'normal',
+        },
+        scan: {
+          title: 'Field Scan · Preparar antes de decidir',
+          summary: scanComplete
+            ? `Escaneo confirmado. Seleccionaste ${selectedPpe.length} elementos del kit de campo.`
+            : 'El escaneo conecta la escena, el EPP y los controles críticos antes de exponer a la persona.',
+          challenge: 'Completá el escaneo y verificá el kit requerido para esta tarea.',
+          priority: 'high',
+        },
+        hazards: {
+          title: 'Confirmar peligros y controles',
+          summary: `Marcaste ${selectedHazards.length} señales. La misión requiere reconocer ${selectedMission.requiredHazards.length} peligros críticos.`,
+          challenge: 'Separá las señales que cambian la decisión de los datos que sólo describen la escena.',
+          priority: 'high',
+        },
+        decision: {
+          title: safeDecision ? 'Decisión segura seleccionada' : 'La tarea espera una decisión',
+          summary: decisionFeedback || 'Podés controlar la exposición o activar Stop Work. La velocidad nunca entrega puntos.',
+          challenge: safeDecision ? 'Registrá evidencia verificable de la barrera.' : 'Elegí una acción que elimine o controle la exposición.',
+          priority: decisionFeedback && !safeDecision ? 'critical' : 'high',
+        },
+        evidence: {
+          title: 'La decisión necesita evidencia',
+          summary: `Registraste ${evidence.length} de ${selectedMission.evidence.length} evidencias requeridas para validar competencia.`,
+          challenge: 'Completá la evidencia y dejá que el supervisor valide la competencia.',
+          priority: 'normal',
+        },
+        certificate: {
+          title: `Certificado · ${selectedMission.certificate}`,
+          summary: `La misión ${selectedMission.order} quedó demostrada con evidencia y aporta ${selectedMission.reward} puntos cooperativos.`,
+          challenge: 'Revisá cómo esta acción fortalece las nueve dimensiones.',
+          priority: 'normal',
+        },
+        debrief: {
+          title: 'La acción segura se convierte en aprendizaje',
+          summary: `${selectedMission.primaryDimensions.length} capacidades directas y ${selectedMission.supportingDimensions.length} dimensiones de soporte recibieron evidencia.`,
+          challenge: 'Compartí la lección con otra cuadrilla o avanzá a la siguiente misión.',
+          priority: 'normal',
+        },
+      }
+      const current = phaseContext[phase]
+      return {
+        id: `mission:${selectedMission.id}:${phase}:${selectedHazards.length}:${evidence.length}:${safeDecision}`,
+        section: `Misión ${selectedMission.order} · ${phaseLabels[phase]}`,
+        ...current,
+      }
+    }
+
+    if (view === 'challenges') {
+      const active = progress.acceptedChallenges.length - progress.completedChallenges.length
+      return {
+        id: `challenges:${active}:${progress.completedChallenges.length}`,
+        section: 'Desafíos semanales',
+        title: active > 0 ? `${active} desafío${active === 1 ? '' : 's'} en progreso` : 'La seguridad también se construye en equipo',
+        summary: `${progress.completedChallenges.length} desafíos logrados. Las invitaciones reconocen detección, competencia y ayuda; nunca velocidad.`,
+        challenge: 'Elegí una misión disponible y convertí una acción segura en protección colectiva.',
+        priority: 'normal',
+      }
+    }
+
+    if (view === 'rules') {
+      return {
+        id: 'rules',
+        section: 'Cómo se juega',
+        title: 'Diez reglas protegen la competencia',
+        summary: 'Se premian competencia, prevención, colaboración, controles sostenidos y conocimiento compartido.',
+        challenge: 'Recordá la regla central: reportar suma; ocultar una señal nunca beneficia.',
+        priority: 'normal',
+      }
+    }
+
+    if (view === 'dimensions') {
+      const dimension = dimensions[dimensionFocus]
+      return {
+        id: `dimension:${dimensionFocus}`,
+        section: `9D · Dimensión ${dimension.number}`,
+        title: dimension.name,
+        summary: dimension.value,
+        challenge: 'Seguí la evidencia de una misión y verificá qué otras dimensiones conecta.',
+        priority: 'normal',
+      }
+    }
+
+    if (view === 'world') {
+      return {
+        id: `world:${globalProgress}:${progress.collaborations}`,
+        section: 'FATALZERO World Cup',
+        title: 'El aprendizaje local escala al mundo',
+        summary: `Campaña al ${globalProgress}%, ${progress.certificates} certificados y ${progress.collaborations} colaboraciones registradas.`,
+        challenge: 'Compartí un aprendizaje para que otra terminal pueda fortalecer el mismo control.',
+        priority: 'normal',
+      }
+    }
+
+    return {
+      id: `map:${completedCount}:${progress.reports}:${progress.scans}`,
+      section: 'AGE Z · Mapa de campaña',
+      title: nextMission ? `Próxima misión: ${nextMission.title}` : 'Campaña completada',
+      summary: `${completedCount}/8 zonas certificadas, ${progress.reports} riesgos reportados y ${progress.scans} escaneos de campo.`,
+      challenge: nextMission?.objective ?? 'Sostené los controles y compartí el aprendizaje.',
+      priority: completedCount === 0 ? 'high' : 'normal',
+    }
+  }, [
+    completedCount,
+    decisionFeedback,
+    dimensionFocus,
+    evidence.length,
+    globalProgress,
+    phase,
+    progress.acceptedChallenges.length,
+    progress.certificates,
+    progress.collaborations,
+    progress.completedChallenges.length,
+    progress.reports,
+    progress.scans,
+    safeDecision,
+    scanComplete,
+    selectedHazards.length,
+    selectedMission,
+    selectedPpe.length,
+    view,
+  ])
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -324,6 +458,7 @@ function App() {
         </div>
       </footer>
 
+      <VI3WCommunicator context={vi3wContext} progress={progress} toast={toast} challenges={challenges} />
       {toast && <div className="toast" role="status"><ShieldCheck size={20} /> {toast}</div>}
     </div>
   )
