@@ -9,21 +9,56 @@ namespace FatalZero.Editor
 {
     public static class SimulatorBuild
     {
-        private const string ScenePath = "Assets/FatalZero/Scenes/LashingHands.unity";
-        private const string BuildKey = "lashing-hands-v1";
+        private const string HandsScenePath = "Assets/FatalZero/Scenes/LashingHands.unity";
+        private const string HandsBuildKey = "lashing-hands-v1";
+        private const string ReleaseScenePath = "Assets/FatalZero/Scenes/LashingLineOfFire.unity";
+        private const string ReleaseBuildKey = "lashing-line-of-fire-v1";
 
         [MenuItem("FATALZERO/Build Hands in Control WebGL")]
         public static void BuildWebGL()
         {
-            CreateScene();
-            ConfigurePlayer();
+            BuildSimulator(
+                HandsScenePath,
+                HandsBuildKey,
+                "FATALZERO · Hands in Control",
+                "LashingHandsSimulator",
+                LashingScenarioVariant.HandsInControl);
+        }
 
-            var outputPath = GetOutputPath();
+        [MenuItem("FATALZERO/Build Line of Fire WebGL")]
+        public static void BuildLineOfFireWebGL()
+        {
+            BuildSimulator(
+                ReleaseScenePath,
+                ReleaseBuildKey,
+                "FATALZERO · Line of Fire",
+                "LashingLineOfFireSimulator",
+                LashingScenarioVariant.LineOfFire);
+        }
+
+        [MenuItem("FATALZERO/Build All WebGL Simulators")]
+        public static void BuildAllWebGL()
+        {
+            BuildWebGL();
+            BuildLineOfFireWebGL();
+        }
+
+        private static void BuildSimulator(
+            string scenePath,
+            string buildKey,
+            string productName,
+            string simulatorObjectName,
+            LashingScenarioVariant variant)
+        {
+            CreateScene(scenePath, simulatorObjectName, variant);
+            ConfigurePlayer(productName);
+
+            var outputPath = GetOutputPath(buildKey);
             Directory.CreateDirectory(outputPath);
 
             var options = new BuildPlayerOptions
             {
-                scenes = new[] { ScenePath },
+                scenes = new[] { scenePath },
                 locationPathName = outputPath,
                 target = BuildTarget.WebGL,
                 options = BuildOptions.CleanBuildCache
@@ -43,27 +78,48 @@ namespace FatalZero.Editor
         [MenuItem("FATALZERO/Create Hands in Control Scene")]
         public static void CreateScene()
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(ScenePath) ?? "Assets/FatalZero/Scenes");
+            CreateScene(
+                HandsScenePath,
+                "LashingHandsSimulator",
+                LashingScenarioVariant.HandsInControl);
+        }
+
+        [MenuItem("FATALZERO/Create Line of Fire Scene")]
+        public static void CreateLineOfFireScene()
+        {
+            CreateScene(
+                ReleaseScenePath,
+                "LashingLineOfFireSimulator",
+                LashingScenarioVariant.LineOfFire);
+        }
+
+        private static void CreateScene(
+            string scenePath,
+            string simulatorObjectName,
+            LashingScenarioVariant variant)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(scenePath) ?? "Assets/FatalZero/Scenes");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             var bridgeObject = new GameObject("FatalZeroBridge");
             bridgeObject.AddComponent<FatalZeroBridge>();
 
-            var simulatorObject = new GameObject("LashingHandsSimulator");
-            simulatorObject.AddComponent<LashingHandsSimulator>();
+            var simulatorObject = new GameObject(simulatorObjectName);
+            var simulator = simulatorObject.AddComponent<LashingHandsSimulator>();
+            simulator.Variant = variant;
 
-            EditorSceneManager.SaveScene(scene, ScenePath);
+            EditorSceneManager.SaveScene(scene, scenePath);
             EditorBuildSettings.scenes = new[]
             {
-                new EditorBuildSettingsScene(ScenePath, true)
+                new EditorBuildSettingsScene(scenePath, true)
             };
             AssetDatabase.SaveAssets();
         }
 
-        private static void ConfigurePlayer()
+        private static void ConfigurePlayer(string productName)
         {
             PlayerSettings.companyName = "3Destiny";
-            PlayerSettings.productName = "FATALZERO · Hands in Control";
+            PlayerSettings.productName = productName;
             PlayerSettings.defaultWebScreenWidth = 1440;
             PlayerSettings.defaultWebScreenHeight = 810;
             PlayerSettings.runInBackground = true;
@@ -76,7 +132,7 @@ namespace FatalZero.Editor
             });
         }
 
-        private static string GetOutputPath()
+        private static string GetOutputPath(string buildKey)
         {
             return Path.GetFullPath(Path.Combine(
                 Application.dataPath,
@@ -86,7 +142,7 @@ namespace FatalZero.Editor
                 "public",
                 "unity",
                 "builds",
-                BuildKey));
+                buildKey));
         }
 
         private static void PatchWebTemplate(string indexPath)

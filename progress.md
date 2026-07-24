@@ -76,6 +76,16 @@ Original prompt: Crear FATALZERO como un juego educativo integral para PC, mobil
 - [x] Canvas adaptado al iframe desktop/mobile.
 - [x] Build Unity exitoso y build React de produccion exitoso.
 
+### Segundo simulador Unity real
+
+- [x] Escena `LashingLineOfFire` para la mision `Liberacion brusca`.
+- [x] Tres controles propios: energia acumulada, trayectoria delimitada y liberacion lateral coordinada.
+- [x] Zona de peligro roja y posicion segura verde visibles en la escena 3D.
+- [x] Fallo seguro, reintento y Stop Work reutilizados desde el runtime comun.
+- [x] Build `lashing-line-of-fire-v1` exportada y habilitada en el catalogo.
+- [x] Mision 4 conectada al mismo flujo FATALZERO de evidencia, validacion, certificado y 9D.
+- [x] Validador automatico para todas las builds Unity habilitadas.
+
 ### Validacion de la arquitectura hibrida
 
 - [x] `npm run build` correcto.

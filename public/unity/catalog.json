@@ -7,9 +7,9 @@
       "label": "Unity WebGL · Hands in Control"
     },
     "lashing-line-of-fire-v1": {
-      "enabled": false,
+      "enabled": true,
       "launchUrl": "./unity/builds/lashing-line-of-fire-v1/index.html",
-      "label": "Unity WebGL · Line of Fire"
+      "label": "Unity WebGL · Liberación brusca"
     },
     "suspended-load-v1": {
       "enabled": false,

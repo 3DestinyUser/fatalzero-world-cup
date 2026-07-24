@@ -157,13 +157,37 @@ namespace FatalZero
 
         private static MissionContext CreateEditorContext()
         {
+            if (LashingHandsSimulator.Instance != null
+                && LashingHandsSimulator.Instance.Variant == LashingScenarioVariant.LineOfFire)
+            {
+                return new MissionContext
+                {
+                    protocolVersion = 1,
+                    sessionId = "unity-editor-preview-release",
+                    missionId = "release",
+                    missionTitle = "Liberacion brusca",
+                    roleId = "operator-lashing",
+                    roleName = "Operario de Trinca y Destrinca",
+                    terminal = "Buenos Aires",
+                    requiredPpe = new[] { "Casco", "Guantes", "Gafas", "Calzado" },
+                    criticalControls = new[]
+                    {
+                        "Evaluar energia acumulada",
+                        "Delimitar la linea de fuego",
+                        "Liberar desde una posicion lateral y coordinada"
+                    },
+                    primaryDimensions = new[] { "culture", "prevent", "training", "immersive" },
+                    supportingDimensions = new[] { "knowledge", "advisor", "intelligence", "operational", "regional" }
+                };
+            }
+
             return new MissionContext
             {
                 protocolVersion = 1,
                 sessionId = "unity-editor-preview",
                 missionId = "hands",
                 missionTitle = "Manos fuera del peligro",
-                roleId = "lashing-operator",
+                roleId = "operator-lashing",
                 roleName = "Operario de Trinca y Destrinca",
                 terminal = "Buenos Aires",
                 requiredPpe = new[] { "Casco", "Guantes", "Gafas" },

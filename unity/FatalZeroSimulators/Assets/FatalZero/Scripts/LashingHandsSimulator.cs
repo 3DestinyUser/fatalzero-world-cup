@@ -6,6 +6,12 @@ using UnityEngine.UI;
 
 namespace FatalZero
 {
+    public enum LashingScenarioVariant
+    {
+        HandsInControl,
+        LineOfFire
+    }
+
     public sealed class LashingHandsSimulator : MonoBehaviour
     {
         [Serializable]
@@ -22,43 +28,89 @@ namespace FatalZero
         }
 
         public static LashingHandsSimulator Instance { get; private set; }
+        public LashingScenarioVariant Variant = LashingScenarioVariant.HandsInControl;
 
-        private readonly List<DecisionStep> steps = new List<DecisionStep>
+        private List<DecisionStep> steps;
+
+        private static List<DecisionStep> CreateHandsSteps()
         {
-            new DecisionStep
+            return new List<DecisionStep>
             {
-                id = "tension-check",
-                title = "01 · VERIFICA LA TENSION",
-                prompt = "El tensor esta bajo carga. ¿Que haces antes de tocarlo?",
-                safeAction = "Detengo, observo y verifico estabilidad y tension",
-                unsafeAction = "Empiezo a girar para terminar mas rapido",
-                success = "Control confirmado: la energia se evalua antes de intervenir.",
-                failure = "Fallo seguro: intervenir sin verificar puede liberar energia de forma brusca.",
-                hotspotPosition = new Vector3(-1.9f, 1.3f, 0.35f)
-            },
-            new DecisionStep
+                new DecisionStep
+                {
+                    id = "tension-check",
+                    title = "01 · VERIFICA LA TENSION",
+                    prompt = "El tensor esta bajo carga. ¿Que haces antes de tocarlo?",
+                    safeAction = "Detengo, observo y verifico estabilidad y tension",
+                    unsafeAction = "Empiezo a girar para terminar mas rapido",
+                    success = "Control confirmado: la energia se evalua antes de intervenir.",
+                    failure = "Fallo seguro: intervenir sin verificar puede liberar energia de forma brusca.",
+                    hotspotPosition = new Vector3(-1.9f, 1.3f, 0.35f)
+                },
+                new DecisionStep
+                {
+                    id = "hands-position",
+                    title = "02 · MANOS FUERA DEL PELIGRO",
+                    prompt = "Debes girar el tensor. ¿Donde posicionas las manos?",
+                    safeAction = "Sobre el cuerpo exterior, lejos del ojal y el pasador",
+                    unsafeAction = "Dentro del ojal para guiar el pasador",
+                    success = "Control confirmado: dedos fuera del punto de atrapamiento.",
+                    failure = "Fallo seguro: un movimiento repentino puede aplastar o cizallar los dedos.",
+                    hotspotPosition = new Vector3(0.05f, 1.15f, 0.2f)
+                },
+                new DecisionStep
+                {
+                    id = "body-position",
+                    title = "03 · FUERA DE LA TRAYECTORIA",
+                    prompt = "La barra conserva tension. ¿Como completas la liberacion?",
+                    safeAction = "Me ubico al costado, coordino y retiro con control",
+                    unsafeAction = "Me coloco frente a la barra y tiro hacia mi cuerpo",
+                    success = "Control confirmado: cuerpo fuera de la linea de fuego.",
+                    failure = "Fallo seguro: la barra puede salir despedida hacia el cuerpo.",
+                    hotspotPosition = new Vector3(2.0f, 1.4f, 0.5f)
+                }
+            };
+        }
+
+        private static List<DecisionStep> CreateLineOfFireSteps()
+        {
+            return new List<DecisionStep>
             {
-                id = "hands-position",
-                title = "02 · MANOS FUERA DEL PELIGRO",
-                prompt = "Debes girar el tensor. ¿Donde posicionas las manos?",
-                safeAction = "Sobre el cuerpo exterior, lejos del ojal y el pasador",
-                unsafeAction = "Dentro del ojal para guiar el pasador",
-                success = "Control confirmado: dedos fuera del punto de atrapamiento.",
-                failure = "Fallo seguro: un movimiento repentino puede aplastar o cizallar los dedos.",
-                hotspotPosition = new Vector3(0.05f, 1.15f, 0.2f)
-            },
-            new DecisionStep
-            {
-                id = "body-position",
-                title = "03 · FUERA DE LA TRAYECTORIA",
-                prompt = "La barra conserva tension. ¿Como completas la liberacion?",
-                safeAction = "Me ubico al costado, coordino y retiro con control",
-                unsafeAction = "Me coloco frente a la barra y tiro hacia mi cuerpo",
-                success = "Control confirmado: cuerpo fuera de la linea de fuego.",
-                failure = "Fallo seguro: la barra puede salir despedida hacia el cuerpo.",
-                hotspotPosition = new Vector3(2.0f, 1.4f, 0.5f)
-            }
-        };
+                new DecisionStep
+                {
+                    id = "stored-energy",
+                    title = "01 · EVALUA LA ENERGIA",
+                    prompt = "La barra superior parece estable. ¿Que confirmas antes de liberarla?",
+                    safeAction = "Detengo y evalúo tension, deformacion y puntos de anclaje",
+                    unsafeAction = "Confio en la apariencia y comienzo a destrincar",
+                    success = "Control confirmado: la energia potencial fue reconocida antes de liberar.",
+                    failure = "Fallo seguro: la apariencia no demuestra que el sistema este libre de energia.",
+                    hotspotPosition = new Vector3(-1.75f, 1.35f, 0.35f)
+                },
+                new DecisionStep
+                {
+                    id = "trajectory-control",
+                    title = "02 · DELIMITA LA TRAYECTORIA",
+                    prompt = "La barra puede salir despedida. ¿Como controlas la linea de fuego?",
+                    safeAction = "Marco la trayectoria y retiro a todas las personas expuestas",
+                    unsafeAction = "Doy una advertencia verbal y sigo trabajando",
+                    success = "Control confirmado: la trayectoria queda visible y libre de personas.",
+                    failure = "Fallo seguro: una advertencia aislada no impide el ingreso a la trayectoria.",
+                    hotspotPosition = new Vector3(0.35f, 1.55f, -0.25f)
+                },
+                new DecisionStep
+                {
+                    id = "controlled-release",
+                    title = "03 · LIBERA DESDE UNA POSICION SEGURA",
+                    prompt = "El equipo esta listo. ¿Desde donde ejecutas la liberacion?",
+                    safeAction = "Al costado, con secuencia acordada y Stop Work disponible",
+                    unsafeAction = "Frente al mecanismo para ganar precision",
+                    success = "Control confirmado: liberacion coordinada fuera de la linea de fuego.",
+                    failure = "Fallo seguro: la precision no compensa una posicion dentro de la trayectoria.",
+                    hotspotPosition = new Vector3(2.1f, 1.45f, 0.6f)
+                }
+            };
+        }
 
         private readonly List<GameObject> hotspotObjects = new List<GameObject>();
         private FatalZeroBridge bridge;
@@ -93,6 +145,9 @@ namespace FatalZero
         private void Awake()
         {
             Instance = this;
+            steps = Variant == LashingScenarioVariant.LineOfFire
+                ? CreateLineOfFireSteps()
+                : CreateHandsSteps();
         }
 
         private void Start()
@@ -143,7 +198,9 @@ namespace FatalZero
             }
 
             missionTitle.text = string.IsNullOrWhiteSpace(context.missionTitle)
-                ? "MANOS FUERA DEL PELIGRO"
+                ? Variant == LashingScenarioVariant.LineOfFire
+                    ? "LIBERACION BRUSCA"
+                    : "MANOS FUERA DEL PELIGRO"
                 : context.missionTitle.ToUpperInvariant();
             roleLine.text = $"{context.roleName}  ·  {context.terminal}";
         }
@@ -188,6 +245,8 @@ namespace FatalZero
             var containerBlue = CreateMaterial("Container blue", new Color32(17, 62, 82, 255), 0.45f, 0.1f);
             var containerRed = CreateMaterial("Container red", new Color32(108, 45, 34, 255), 0.38f, 0.08f);
             var safetyYellow = CreateMaterial("Safety yellow", new Color32(245, 177, 35, 255), 0.35f, 0.12f);
+            var dangerRed = CreateEmissionMaterial("Line of fire", Red);
+            var safeGreen = CreateEmissionMaterial("Safe position", Green);
 
             CreateCube("Lashing deck", new Vector3(0f, -0.3f, 1f), new Vector3(16f, 0.55f, 9f), deckMaterial);
             CreateCube("Container left", new Vector3(-5.4f, 1.6f, 2.7f), new Vector3(4.2f, 3.6f, 2.7f), containerBlue);
@@ -204,6 +263,10 @@ namespace FatalZero
 
             BuildTurnbuckle(steelMaterial, darkSteel);
             BuildRailings(steelMaterial);
+            if (Variant == LashingScenarioVariant.LineOfFire)
+            {
+                BuildLineOfFireOverlay(dangerRed, safeGreen);
+            }
             BuildHotspots();
         }
 
@@ -231,6 +294,28 @@ namespace FatalZero
 
             CreateCylinder("Railing top", new Vector3(0f, 1.8f, -3.1f), new Vector3(0.07f, 7.2f, 0.07f), Quaternion.Euler(0f, 0f, 90f), material);
             CreateCylinder("Railing middle", new Vector3(0f, 1f, -3.1f), new Vector3(0.055f, 7.2f, 0.055f), Quaternion.Euler(0f, 0f, 90f), material);
+        }
+
+        private void BuildLineOfFireOverlay(Material dangerMaterial, Material safeMaterial)
+        {
+            for (var i = -4; i <= 4; i++)
+            {
+                var marker = CreateCube(
+                    $"Line of fire marker {i}",
+                    new Vector3(i * 0.72f, 0.035f, 0.52f),
+                    new Vector3(0.48f, 0.035f, 0.16f),
+                    dangerMaterial);
+                marker.transform.rotation = Quaternion.Euler(0f, -18f, 0f);
+                Destroy(marker.GetComponent<Collider>());
+            }
+
+            CreateCube("Safe release position", new Vector3(2.45f, 0.04f, -1.75f), new Vector3(2.1f, 0.04f, 0.72f), safeMaterial);
+            CreateCylinder(
+                "Stored energy beacon",
+                new Vector3(-1.75f, 1.04f, 0.45f),
+                new Vector3(0.56f, 0.08f, 0.56f),
+                Quaternion.identity,
+                dangerMaterial);
         }
 
         private void BuildHotspots()
@@ -285,7 +370,13 @@ namespace FatalZero
             var titlePanel = CreatePanel(canvasObject.transform, "Mission Header", Panel, new Vector2(0.025f, 0.69f), new Vector2(0.46f, 0.89f));
             AddText(titlePanel.transform, "Kicker", "SIMULADOR 3D · TRINCA Y DESTRINCA", 15, FontStyle.Bold, TextAnchor.UpperLeft,
                 new Vector2(0.04f, 0.67f), new Vector2(0.96f, 0.94f), Orange);
-            missionTitle = AddText(titlePanel.transform, "Mission", "MANOS FUERA DEL PELIGRO", 30, FontStyle.Bold, TextAnchor.MiddleLeft,
+            missionTitle = AddText(
+                titlePanel.transform,
+                "Mission",
+                Variant == LashingScenarioVariant.LineOfFire ? "LIBERACION BRUSCA" : "MANOS FUERA DEL PELIGRO",
+                30,
+                FontStyle.Bold,
+                TextAnchor.MiddleLeft,
                 new Vector2(0.04f, 0.27f), new Vector2(0.96f, 0.72f), Color.white);
             roleLine = AddText(titlePanel.transform, "Role", "Operario de Trinca y Destrinca  ·  Buenos Aires", 15, FontStyle.Normal, TextAnchor.LowerLeft,
                 new Vector2(0.04f, 0.07f), new Vector2(0.96f, 0.31f), SoftText);
@@ -324,7 +415,15 @@ namespace FatalZero
             completionPanel = CreatePanel(canvasObject.transform, "Completion Panel", Panel, new Vector2(0.18f, 0.19f), new Vector2(0.82f, 0.8f));
             AddText(completionPanel.transform, "Complete Kicker", "SECUENCIA CONTROLADA", 17, FontStyle.Bold, TextAnchor.MiddleCenter,
                 new Vector2(0.1f, 0.78f), new Vector2(0.9f, 0.92f), Green);
-            AddText(completionPanel.transform, "Complete Title", "3 CONTROLES CRITICOS CONFIRMADOS", 34, FontStyle.Bold, TextAnchor.MiddleCenter,
+            AddText(
+                completionPanel.transform,
+                "Complete Title",
+                Variant == LashingScenarioVariant.LineOfFire
+                    ? "LINEA DE FUEGO CONTROLADA"
+                    : "3 CONTROLES CRITICOS CONFIRMADOS",
+                34,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
                 new Vector2(0.08f, 0.55f), new Vector2(0.92f, 0.78f), Color.white);
             AddText(completionPanel.transform, "Complete Body",
                 "La velocidad no genero puntos. Tu evidencia requiere validacion humana antes de certificar la competencia.",
@@ -359,7 +458,9 @@ namespace FatalZero
             }
 
             progressText.text = $"CONTROL {index + 1:00} / {steps.Count:00}";
-            instructionText.text = $"Selecciona el punto {index + 1} en la escena 3D.\nArrastra para inspeccionar el tensor.";
+            instructionText.text = Variant == LashingScenarioVariant.LineOfFire
+                ? $"Selecciona el punto {index + 1} en la escena 3D.\nInspecciona la energia y la trayectoria marcada."
+                : $"Selecciona el punto {index + 1} en la escena 3D.\nArrastra para inspeccionar el tensor.";
         }
 
         private void OpenDecision()

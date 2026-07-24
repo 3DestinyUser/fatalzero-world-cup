@@ -6,6 +6,6 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/FatalZero/Scenes/LashingHands.unity
-    guid: f10da5651980f3b49bae30422b2c30e2
+    path: Assets/FatalZero/Scenes/LashingLineOfFire.unity
+    guid: 23efafe7fca722846a857163ea447022
   m_configObjects: {}

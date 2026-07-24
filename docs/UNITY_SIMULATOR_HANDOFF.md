@@ -180,3 +180,44 @@ Minimum content:
 
 Avoid multiplayer, complete-terminal loading and advanced scoring in this first
 slice. The goal is to validate the bridge and the learning loop.
+
+## Multi-Simulator Template
+
+The Unity project now produces scenario-specific WebGL builds from a shared
+lashing runtime:
+
+| Build key | Mission | Scenario variant |
+| --- | --- | --- |
+| `lashing-hands-v1` | Manos fuera del peligro | Hands in Control |
+| `lashing-line-of-fire-v1` | Liberacion brusca | Line of Fire |
+
+Both variants reuse camera control, HUD, safe failure, Stop Work and bridge
+events. Each one owns its decision sequence, 3D overlays, feedback and product
+identity.
+
+Build a single scenario from the command line:
+
+```powershell
+& "C:\Program Files\Unity\Hub\Editor\6000.5.4f1\Editor\Unity.exe" `
+  -batchmode -nographics -quit `
+  -projectPath ".\unity\FatalZeroSimulators" `
+  -executeMethod FatalZero.Editor.SimulatorBuild.BuildLineOfFireWebGL
+```
+
+Build every registered scenario:
+
+```powershell
+& "C:\Program Files\Unity\Hub\Editor\6000.5.4f1\Editor\Unity.exe" `
+  -batchmode -nographics -quit `
+  -projectPath ".\unity\FatalZeroSimulators" `
+  -executeMethod FatalZero.Editor.SimulatorBuild.BuildAllWebGL
+```
+
+Before publishing, run:
+
+```powershell
+npm run validate:unity
+```
+
+This validator fails when an enabled catalog entry is missing its player,
+mission-context handoff, loader, data file or WebAssembly payload.
