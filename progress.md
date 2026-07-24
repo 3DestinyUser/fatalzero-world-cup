@@ -45,3 +45,46 @@ Original prompt: Crear FATALZERO como un juego educativo integral para PC, mobil
 - La IA del prototipo solo sugiere; no autoriza ni certifica.
 - El certificado digital no reemplaza habilitaciones, permisos ni validacion HSSE local.
 - Reportar, detener, ayudar y compartir deben generar progreso positivo.
+
+## Arquitectura hibrida FATALZERO + Unity
+
+- [x] FATALZERO permanece como plataforma central de rol, misiones, 9D, evidencia, certificado y World Cup.
+- [x] Se agrego una fase de simulacion solo para misiones complejas aplicables.
+- [x] Se agrego un contrato tipado FATALZERO <-> Unity WebGL con version, sesion y mision verificadas.
+- [x] Se agrego catalogo de builds Unity con activacion independiente por escenario.
+- [x] Se mantiene un simulador web de respaldo cuando la build Unity no esta disponible.
+- [x] Manos fuera del peligro, liberacion brusca y cargas suspendidas quedaron preparadas para Unity.
+- [x] Se agregaron safe failures sin recompensa por velocidad.
+- [x] Se agrego el handoff con archivos `.jslib` y `.cs` para el primer vertical slice.
+
+### Proximo hito Unity
+
+- [x] Exportar `lashing-hands-v1` como WebGL con Unity 6.0.
+- [x] Copiar la build a `public/unity/builds/lashing-hands-v1/`.
+- [x] Habilitarla en `public/unity/catalog.json`.
+- Validar mision -> Unity -> evidencia -> supervisor -> certificado -> impacto 9D.
+
+### Primer simulador Unity real
+
+- [x] Proyecto reproducible en `unity/FatalZeroSimulators`.
+- [x] Escena 3D procedural de plataforma de lashing con tensor, barra, contenedores y tres hotspots.
+- [x] Tres controles: verificar tension, manos fuera del ojal y cuerpo fuera de trayectoria.
+- [x] Fallo seguro explicativo sin recompensa por velocidad.
+- [x] Stop Work disponible como accion positiva.
+- [x] Evento final con `humanValidationRequired: true`.
+- [x] Puente WebGL compilado dentro del framework Unity.
+- [x] Canvas adaptado al iframe desktop/mobile.
+- [x] Build Unity exitoso y build React de produccion exitoso.
+
+### Validacion de la arquitectura hibrida
+
+- [x] `npm run build` correcto.
+- [x] `npm run lint` correcto.
+- [x] Mapa 3D visible y no vacio en el cliente Playwright del juego.
+- [x] Mision `Manos fuera del peligro` probada de extremo a extremo.
+- [x] Decision insegura produce `safe_failure` y no permite avanzar.
+- [x] Reintento conserva el control actual y permite completar tres decisiones seguras.
+- [x] El resultado vuelve a FATALZERO con `humanValidationRequired: true`.
+- [x] Evidencia, validacion, certificado y debrief 9D permanecen en la plataforma central.
+- [x] Vista desktop `1440x900` y mobile `390x844` revisadas sin desborde horizontal.
+- [x] Consola sin errores; solo advertencia conocida de `THREE.Clock` de la dependencia 3D.

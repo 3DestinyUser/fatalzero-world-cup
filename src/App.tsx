@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AlertTriangle, ArrowLeft, ArrowRight, Award, BookOpen, Check, ChevronRight,
   CircleHelp, Clock3, Crown, Cuboid, Eye, Flag, Gamepad2, Hand, Home,
@@ -6,14 +6,17 @@ import {
   ShieldCheck, Smartphone, Swords, Target, Trophy, Users, X, Zap,
 } from 'lucide-react'
 import { activeRole, challenges, dimensions, gameRules, initialProgress, missions } from './gameData'
-import type { Challenge, DimensionId, GameProgress, Mission, MissionState, PPEId, RoleProfile } from './types'
+import type {
+  Challenge, DimensionId, GameProgress, Mission, MissionState, PPEId, RoleProfile, SimulatorEvent,
+} from './types'
 import ARScanner from './ARScanner'
 import VI3WCommunicator, { type VI3WContext } from './VI3WCommunicator'
+import SimulatorExperience from './SimulatorExperience'
 const TerminalMap3D = lazy(() => import('./TerminalMap3D'))
 import './App.css'
 
 type View = 'map' | 'mission' | 'challenges' | 'rules' | 'dimensions' | 'world'
-type Phase = 'briefing' | 'scan' | 'hazards' | 'decision' | 'evidence' | 'certificate' | 'debrief'
+type Phase = 'briefing' | 'scan' | 'hazards' | 'simulation' | 'decision' | 'evidence' | 'certificate' | 'debrief'
 
 const STORAGE_KEY = 'fatalzero-world-cup-progress-v1'
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
@@ -31,6 +34,8 @@ const loadProgress = (): GameProgress => {
       completedChallenges: parsed.completedChallenges ?? [],
       unlockedBadges: parsed.unlockedBadges ?? [],
       scans: parsed.scans ?? 0,
+      simulationsCompleted: parsed.simulationsCompleted ?? 0,
+      safeFailures: parsed.safeFailures ?? 0,
     }
   } catch {
     return initialProgress
@@ -46,7 +51,7 @@ const navItems: { id: View; label: string; icon: typeof Home }[] = [
 ]
 
 const phaseLabels: Record<Phase, string> = {
-  briefing: 'Briefing', scan: 'Field Scan', hazards: 'Confirmacion', decision: 'Decision', evidence: 'Evidencia',
+  briefing: 'Briefing', scan: 'Field Scan', hazards: 'Confirmacion', simulation: 'Simulador', decision: 'Decision', evidence: 'Evidencia',
   certificate: 'Certificado', debrief: 'Impacto 9D',
 }
 
@@ -71,6 +76,8 @@ function App() {
   const [evidence, setEvidence] = useState<string[]>([])
   const [scanComplete, setScanComplete] = useState(false)
   const [selectedPpe, setSelectedPpe] = useState<PPEId[]>([])
+  const [simulationComplete, setSimulationComplete] = useState(false)
+  const [simulatorEvents, setSimulatorEvents] = useState<SimulatorEvent[]>([])
   const [toast, setToast] = useState('')
   const [dimensionFocus, setDimensionFocus] = useState<DimensionId>('culture')
 
@@ -99,6 +106,9 @@ function App() {
         ppeSelected: selectedPpe,
         requiredPpe: selectedMission.requiredPpe,
         scanComplete,
+        simulationRequired: Boolean(selectedMission.simulation),
+        simulationComplete,
+        simulatorEvents: simulatorEvents.slice(-6),
         safeDecision,
         evidenceSelected: evidence,
       } : null,
@@ -125,7 +135,6 @@ function App() {
     return 'locked'
   }
 
-  const phaseIndex = Object.keys(phaseLabels).indexOf(phase)
 
   const resetMissionState = (mission: Mission) => {
     setSelectedMission(mission)
@@ -136,6 +145,8 @@ function App() {
     setEvidence([])
     setScanComplete(false)
     setSelectedPpe([])
+    setSimulationComplete(false)
+    setSimulatorEvents([])
   }
 
   const openMission = (mission: Mission) => {
@@ -168,6 +179,26 @@ function App() {
   const completeFieldScan = () => {
     if (!scanComplete) setProgress((current) => ({ ...current, scans: current.scans + 1 }))
     setScanComplete(true)
+  }
+
+  const handleSimulatorEvent = useCallback((event: SimulatorEvent) => {
+    setSimulatorEvents((current) => [...current, event].slice(-12))
+    if (event.type === 'safe_failure') {
+      setProgress((current) => ({ ...current, safeFailures: current.safeFailures + 1 }))
+      setToast('SAFE FAILURE: el simulador detuvo la accion y mantuvo el control actual.')
+    }
+  }, [])
+
+  const completeSimulation = () => {
+    if (!simulationComplete) {
+      setProgress((current) => ({
+        ...current,
+        simulationsCompleted: current.simulationsCompleted + 1,
+      }))
+    }
+    setSimulationComplete(true)
+    setPhase('decision')
+    setToast('Simulacion transferida a FATALZERO. Ahora confirma la decision operacional.')
   }
 
   const issueCertificate = () => {
@@ -262,6 +293,16 @@ function App() {
           challenge: 'Separá las señales que cambian la decisión de los datos que sólo describen la escena.',
           priority: 'high',
         },
+        simulation: {
+          title: 'Simulador Unity · Práctica espacial',
+          summary: simulationComplete
+            ? 'La práctica fue transferida a FATALZERO y espera confirmación operacional.'
+            : `Unity está evaluando controles críticos para ${selectedMission.title}. La velocidad no entrega puntos.`,
+          challenge: simulationComplete
+            ? 'Confirmá la decisión operacional y registrá evidencia.'
+            : 'Completá los controles o activá Stop Work ante cualquier duda.',
+          priority: simulationComplete ? 'normal' : 'high',
+        },
         decision: {
           title: safeDecision ? 'Decisión segura seleccionada' : 'La tarea espera una decisión',
           summary: decisionFeedback || 'Podés controlar la exposición o activar Stop Work. La velocidad nunca entrega puntos.',
@@ -289,7 +330,7 @@ function App() {
       }
       const current = phaseContext[phase]
       return {
-        id: `mission:${selectedMission.id}:${phase}:${selectedHazards.length}:${evidence.length}:${safeDecision}`,
+        id: `mission:${selectedMission.id}:${phase}:${selectedHazards.length}:${evidence.length}:${safeDecision}:${simulatorEvents.length}`,
         section: `Misión ${selectedMission.order} · ${phaseLabels[phase]}`,
         ...current,
       }
@@ -367,6 +408,8 @@ function App() {
     selectedHazards.length,
     selectedMission,
     selectedPpe.length,
+    simulationComplete,
+    simulatorEvents.length,
     view,
   ])
 
@@ -410,7 +453,6 @@ function App() {
           <MissionPlayer
             mission={selectedMission}
             phase={phase}
-            phaseIndex={phaseIndex}
             selectedHazards={selectedHazards}
             safeDecision={safeDecision}
             feedback={decisionFeedback}
@@ -424,6 +466,8 @@ function App() {
             scanComplete={scanComplete}
             selectedPpe={selectedPpe}
             completeFieldScan={completeFieldScan}
+            onSimulatorEvent={handleSimulatorEvent}
+            completeSimulation={completeSimulation}
             togglePpe={(id) => setSelectedPpe((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
             issueCertificate={issueCertificate}
             shareLearning={() => shareLearning(selectedMission.id)}
@@ -584,19 +628,22 @@ function MapView({ progress, globalProgress, missionState, openMission, setView,
 }
 
 interface PlayerProps {
-  mission: Mission; phase: Phase; phaseIndex: number; selectedHazards: string[]; safeDecision: boolean
+  mission: Mission; phase: Phase; selectedHazards: string[]; safeDecision: boolean
   feedback: string; evidence: string[]; onBack: () => void; setPhase: (phase: Phase) => void
   setSelectedHazards: (value: string[]) => void; chooseDecision: (safe: boolean, feedback: string) => void
   activateStopWork: () => void; setEvidence: (value: string[]) => void; issueCertificate: () => void
   shareLearning: () => void; nextMission: () => void
   scanComplete: boolean; selectedPpe: PPEId[]; completeFieldScan: () => void; togglePpe: (id: PPEId) => void
+  onSimulatorEvent: (event: SimulatorEvent) => void; completeSimulation: () => void
   role: RoleProfile
 }
 
 function MissionPlayer(props: PlayerProps) {
-  const { mission, phase, phaseIndex } = props
+  const { mission, phase } = props
   const hazardsReady = mission.requiredHazards.every((id) => props.selectedHazards.includes(id))
   const evidenceReady = mission.evidence.every((item) => props.evidence.includes(item))
+  const visiblePhases = Object.entries(phaseLabels).filter(([id]) => id !== 'simulation' || mission.simulation)
+  const phaseIndex = visiblePhases.findIndex(([id]) => id === phase)
 
   const toggle = (value: string, list: string[], setList: (items: string[]) => void) => {
     setList(list.includes(value) ? list.filter((item) => item !== value) : [...list, value])
@@ -611,7 +658,7 @@ function MissionPlayer(props: PlayerProps) {
       </header>
 
       <div className="phase-track" aria-label="Progreso de la mision">
-        {Object.entries(phaseLabels).map(([id, label], index) => (
+        {visiblePhases.map(([id, label], index) => (
           <span key={id} className={index < phaseIndex ? 'done' : index === phaseIndex ? 'active' : ''}>
             <i>{index < phaseIndex ? <Check /> : index + 1}</i><b>{label}</b>
           </span>
@@ -626,6 +673,13 @@ function MissionPlayer(props: PlayerProps) {
           onTogglePpe={props.togglePpe}
           onScanComplete={props.completeFieldScan}
           onContinue={() => props.setPhase('hazards')}
+        />
+      ) : phase === 'simulation' && mission.simulation ? (
+        <SimulatorExperience
+          mission={mission}
+          role={props.role}
+          onEvent={props.onSimulatorEvent}
+          onComplete={props.completeSimulation}
         />
       ) : <div className="mission-stage">
         <div className="mission-visual">
@@ -663,7 +717,9 @@ function MissionPlayer(props: PlayerProps) {
                   </button>
                 ))}
               </div>
-              <button className="primary wide" disabled={!hazardsReady} onClick={() => props.setPhase('decision')}>Confirmar riesgos <ArrowRight /></button>
+              <button className="primary wide" disabled={!hazardsReady} onClick={() => props.setPhase(mission.simulation ? 'simulation' : 'decision')}>
+                {mission.simulation ? 'Abrir simulador especializado' : 'Confirmar riesgos'} <ArrowRight />
+              </button>
             </div>
           )}
 

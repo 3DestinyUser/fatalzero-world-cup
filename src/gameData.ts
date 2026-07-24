@@ -129,6 +129,15 @@ export const missions: Mission[] = [
     unsafe: ['Usar un dedo para alinear el pasador', 'Confiar en que el guante evita el atrapamiento'],
     evidence: ['Puntos de pellizco identificados', 'Tecnica demostrada', 'Validacion de supervisor'],
     requiredPpe: ['helmet', 'glasses', 'gloves', 'boots'], criticalControls: ['Dedos fuera del ojal y pasador', 'Tension controlada antes de intervenir', 'Posicion corporal fuera de la trayectoria'],
+    simulation: {
+      id: 'hands-in-control', title: 'Secuencia segura del tensor', preferredEngine: 'unity-webgl', fallbackEngine: 'web-safety',
+      unityBuildKey: 'lashing-hands-v1', scenario: 'Tensor de rosca bajo tension · plataforma de lashing',
+      steps: [
+        { id: 'inspect', prompt: 'Antes de tocar el tensor, ¿como preparas la intervencion?', safeAction: 'Verificar tension, pasador y estabilidad', unsafeAction: 'Comenzar mientras otro operario sostiene la barra', successFeedback: 'La condicion fue verificada antes de exponer las manos.', failureFeedback: 'La coordinacion informal no controla la energia ni el movimiento repentino.' },
+        { id: 'hands', prompt: '¿Donde posicionas las manos durante el giro?', safeAction: 'Sobre el cuerpo exterior del tensor', unsafeAction: 'Dentro del ojal para guiar el pasador', successFeedback: 'Los dedos permanecen fuera del punto de atrapamiento.', failureFeedback: 'Un movimiento repentino puede aplastar o cizallar los dedos.' },
+        { id: 'body', prompt: '¿Como completas la maniobra?', safeAction: 'Cuerpo fuera de trayectoria y comunicacion cerrada', unsafeAction: 'Frente al tensor para observar de cerca', successFeedback: 'La postura final mantiene cuerpo y manos fuera de la linea de fuego.', failureFeedback: 'La observacion cercana coloca rostro y torso dentro de la trayectoria.' },
+      ],
+    },
     primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['knowledge', 'advisor', 'operational'],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el punto de atrapamiento', description: 'Registra donde deben mantenerse las manos fuera del tensor para que el equipo aprenda antes de intervenir.', impact: 'El hallazgo alimenta Knowledge y previene la repeticion.' }, certificate: 'Hands in Control', reward: 240,
   }),
@@ -143,6 +152,15 @@ export const missions: Mission[] = [
     unsafe: ['Acercar el rostro para observar el mecanismo', 'Continuar porque casco y gafas brindan proteccion'],
     evidence: ['Trayectoria marcada', 'Posicion segura seleccionada', 'Briefing de liberacion'],
     requiredPpe: ['helmet', 'glasses', 'gloves', 'boots'], criticalControls: ['Energia acumulada evaluada', 'Linea de fuego delimitada', 'Liberacion coordinada y controlada'],
+    simulation: {
+      id: 'line-of-fire-control', title: 'Liberacion controlada de energia', preferredEngine: 'unity-webgl', fallbackEngine: 'web-safety',
+      unityBuildKey: 'lashing-line-of-fire-v1', scenario: 'Barra superior tensionada · liberacion con deformacion del buque',
+      steps: [
+        { id: 'energy', prompt: '¿Que confirmas antes de liberar la barra?', safeAction: 'Evaluar tension y energia acumulada', unsafeAction: 'Confiar en que la barra esta estable', successFeedback: 'La energia potencial fue reconocida antes de liberar.', failureFeedback: 'La apariencia no demuestra que el sistema este libre de energia.' },
+        { id: 'trajectory', prompt: '¿Como controlas la posible liberacion?', safeAction: 'Marcar trayectoria y retirar personas', unsafeAction: 'Advertir verbalmente sin delimitar', successFeedback: 'La linea de fuego queda visible y sin personas expuestas.', failureFeedback: 'Una advertencia aislada no impide el ingreso a la trayectoria.' },
+        { id: 'release', prompt: '¿Como ejecutas la liberacion?', safeAction: 'Posicion lateral, secuencia acordada y Stop Work disponible', unsafeAction: 'Frente al mecanismo para ganar precision', successFeedback: 'La liberacion se ejecuta fuera de trayectoria y bajo una secuencia compartida.', failureFeedback: 'La precision no compensa una posicion dentro de la linea de fuego.' },
+      ],
+    },
     primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['intelligence', 'advisor', 'knowledge', 'operational', 'regional'],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte la trayectoria segura', description: 'Marca la linea de fuego y deja una referencia para que otra cuadrilla pueda posicionarse mejor.', impact: 'Una decision local puede convertirse en una barrera regional.' }, certificate: 'Line of Fire Control', reward: 260,
   }),
@@ -171,6 +189,15 @@ export const missions: Mission[] = [
     unsafe: ['Cruzar rapido antes de que llegue el spreader', 'Confiar en que el operador avisara si existe peligro'],
     evidence: ['Zona de exclusion identificada', 'Ruta alternativa', 'Comunicacion confirmada'],
     requiredPpe: ['helmet', 'vest', 'boots'], criticalControls: ['Zona de exclusion activa', 'Ruta alternativa definida', 'Comunicacion con operacion confirmada'],
+    simulation: {
+      id: 'suspended-load-awareness', title: 'Cruce seguro durante operacion STS', preferredEngine: 'unity-webgl', fallbackEngine: 'web-safety',
+      unityBuildKey: 'suspended-load-v1', scenario: 'Spreader activo · radio de balanceo y punto ciego',
+      steps: [
+        { id: 'zone', prompt: '¿Que haces al detectar una carga suspendida?', safeAction: 'Detenerse fuera de la zona de exclusion', unsafeAction: 'Calcular el tiempo y cruzar rapido', successFeedback: 'La persona permanece fuera del radio de exposicion.', failureFeedback: 'La velocidad nunca controla el movimiento de una carga suspendida.' },
+        { id: 'route', prompt: '¿Como continuas hacia el puesto?', safeAction: 'Seleccionar una ruta segregada alternativa', unsafeAction: 'Pasar por debajo cuando la carga se detiene', successFeedback: 'La ruta evita la carga y sus movimientos posibles.', failureFeedback: 'Una carga detenida continua suspendida y puede moverse inesperadamente.' },
+        { id: 'communication', prompt: '¿Que confirmacion cierra el control?', safeAction: 'Comunicacion con operacion y zona liberada', unsafeAction: 'Confiar en contacto visual con el operador', successFeedback: 'La coordinacion operacional confirma que el paso es seguro.', failureFeedback: 'El contacto visual no elimina puntos ciegos ni reemplaza la comunicacion.' },
+      ],
+    },
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['intelligence', 'advisor', 'regional', 'knowledge'],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte una ruta fuera de la carga', description: 'Comparte la ruta alternativa y la comunicacion confirmada con tu equipo.', impact: 'La segregacion se refuerza con conocimiento compartido.' }, certificate: 'Suspended Load Awareness', reward: 280,
   }),
@@ -207,4 +234,5 @@ export const missions: Mission[] = [
 export const initialProgress = {
   completed: [], sustained: [], points: 2450, reports: 3, collaborations: 8, sharedMissions: [],
   acceptedChallenges: [], completedChallenges: [], unlockedBadges: [], scans: 0, certificates: 0,
+  simulationsCompleted: 0, safeFailures: 0,
 }

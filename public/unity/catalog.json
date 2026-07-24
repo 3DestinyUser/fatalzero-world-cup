@@ -1,0 +1,20 @@
+{
+  "protocolVersion": 1,
+  "builds": {
+    "lashing-hands-v1": {
+      "enabled": true,
+      "launchUrl": "./unity/builds/lashing-hands-v1/index.html",
+      "label": "Unity WebGL · Hands in Control"
+    },
+    "lashing-line-of-fire-v1": {
+      "enabled": false,
+      "launchUrl": "./unity/builds/lashing-line-of-fire-v1/index.html",
+      "label": "Unity WebGL · Line of Fire"
+    },
+    "suspended-load-v1": {
+      "enabled": false,
+      "launchUrl": "./unity/builds/suspended-load-v1/index.html",
+      "label": "Unity WebGL · Suspended Load"
+    }
+  }
+}
