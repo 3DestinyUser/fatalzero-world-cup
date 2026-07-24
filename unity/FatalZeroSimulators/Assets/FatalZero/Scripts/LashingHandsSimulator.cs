@@ -156,6 +156,7 @@ namespace FatalZero
         private readonly List<GameObject> hotspotObjects = new List<GameObject>();
         private FatalZeroBridge bridge;
         private Camera sceneCamera;
+        private SimulatorOrbitCamera orbitCamera;
         private Font font;
         private Text missionTitle;
         private Text roleLine;
@@ -175,6 +176,8 @@ namespace FatalZero
         private bool awaitingDecision;
         private bool feedbackAdvancesStep;
         private bool simulationSent;
+        private Vector2 pointerDownPosition;
+        private bool pointerStartedOverUi;
 
         private static readonly Color Navy = new Color32(2, 18, 31, 255);
         private static readonly Color Panel = new Color32(5, 31, 48, 242);
@@ -224,18 +227,47 @@ namespace FatalZero
 
         private void Update()
         {
-            if (awaitingDecision || currentStep >= steps.Count || Input.GetMouseButton(0) == false)
-            {
-                AnimateHotspots();
-                return;
-            }
+            AnimateHotspots();
 
-            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject())
+            if (awaitingDecision || currentStep >= steps.Count)
             {
                 return;
             }
 
-            var ray = sceneCamera.ScreenPointToRay(Input.mousePosition);
+            if (Input.GetMouseButtonDown(0))
+            {
+                pointerDownPosition = Input.mousePosition;
+                pointerStartedOverUi = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            }
+
+            if (Input.GetMouseButtonUp(0))
+            {
+                var pointerTravel = Vector2.Distance(pointerDownPosition, Input.mousePosition);
+                if (pointerStartedOverUi == false && pointerTravel < 18f)
+                {
+                    TryOpenHotspot(Input.mousePosition);
+                }
+            }
+
+            if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.JoystickButton0))
+            {
+                InspectCenter();
+            }
+        }
+
+        public void InspectCenter()
+        {
+            TryOpenHotspot(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
+        }
+
+        private void TryOpenHotspot(Vector2 screenPosition)
+        {
+            if (sceneCamera == null || awaitingDecision || currentStep >= steps.Count)
+            {
+                return;
+            }
+
+            var ray = sceneCamera.ScreenPointToRay(screenPosition);
             if (Physics.Raycast(ray, out var hit, 100f))
             {
                 var hotspot = hit.collider.GetComponent<SimulatorHotspot>();
@@ -244,8 +276,6 @@ namespace FatalZero
                     OpenDecision();
                 }
             }
-
-            AnimateHotspots();
         }
 
         public void ApplyMissionContext(FatalZeroBridge.MissionContext context)
@@ -277,8 +307,8 @@ namespace FatalZero
             sceneCamera.fieldOfView = 47f;
             cameraObject.transform.position = new Vector3(0f, 5.2f, -10.5f);
             cameraObject.transform.LookAt(new Vector3(0f, 1.25f, 0.6f));
-            var orbit = cameraObject.AddComponent<SimulatorOrbitCamera>();
-            orbit.Configure(new Vector3(0f, 1.15f, 0.5f), 10.8f);
+            orbitCamera = cameraObject.AddComponent<SimulatorOrbitCamera>();
+            orbitCamera.Configure(new Vector3(0f, 1.15f, 0.5f), 10.8f);
 
             var keyLightObject = new GameObject("Key Light");
             var keyLight = keyLightObject.AddComponent<Light>();
@@ -456,9 +486,11 @@ namespace FatalZero
 
             var topBar = CreatePanel(canvasObject.transform, "Top Bar", Navy, new Vector2(0f, 0.91f), Vector2.one);
             AddText(topBar.transform, "Brand", "FATALZERO  ·  UNITY MISSION ENGINE", 22, FontStyle.Bold, TextAnchor.MiddleLeft,
-                new Vector2(0.025f, 0f), new Vector2(0.56f, 1f), Color.white);
+                new Vector2(0.025f, 0f), new Vector2(0.39f, 1f), Color.white);
+            AddText(topBar.transform, "Controls", "PC  WASD / FLECHAS / SPACE   ·   GAMEPAD   ·   MOBILE TOUCH", 12, FontStyle.Bold, TextAnchor.MiddleCenter,
+                new Vector2(0.36f, 0f), new Vector2(0.76f, 1f), SoftText);
             progressText = AddText(topBar.transform, "Progress", "CONTROL 01 / 03", 18, FontStyle.Bold, TextAnchor.MiddleRight,
-                new Vector2(0.65f, 0f), new Vector2(0.975f, 1f), Orange);
+                new Vector2(0.75f, 0f), new Vector2(0.975f, 1f), Orange);
 
             var titlePanel = CreatePanel(canvasObject.transform, "Mission Header", Panel, new Vector2(0.025f, 0.69f), new Vector2(0.46f, 0.89f));
             AddText(titlePanel.transform, "Kicker", "SIMULADOR 3D · TRINCA Y DESTRINCA", 15, FontStyle.Bold, TextAnchor.UpperLeft,
@@ -477,6 +509,39 @@ namespace FatalZero
             var instructionPanel = CreatePanel(canvasObject.transform, "Instruction", Panel, new Vector2(0.025f, 0.07f), new Vector2(0.43f, 0.24f));
             instructionText = AddText(instructionPanel.transform, "Instruction Text", string.Empty, 19, FontStyle.Bold, TextAnchor.MiddleLeft,
                 new Vector2(0.05f, 0.08f), new Vector2(0.95f, 0.92f), Color.white);
+
+            AddText(canvasObject.transform, "Center Reticle", "+", 30, FontStyle.Bold, TextAnchor.MiddleCenter,
+                new Vector2(0.485f, 0.46f), new Vector2(0.515f, 0.54f), Color.white);
+
+            var joystickPanel = CreatePanel(
+                canvasObject.transform,
+                "Virtual Joystick",
+                new Color32(5, 31, 48, 205),
+                new Vector2(0.025f, 0.27f),
+                new Vector2(0.145f, 0.49f));
+            AddText(joystickPanel.transform, "Joystick Label", "CAMARA", 13, FontStyle.Bold, TextAnchor.MiddleCenter,
+                new Vector2(0.08f, 0.75f), new Vector2(0.92f, 0.96f), SoftText);
+            var joystickBase = CreatePanel(
+                joystickPanel.transform,
+                "Joystick Base",
+                new Color32(35, 63, 78, 235),
+                new Vector2(0.17f, 0.08f),
+                new Vector2(0.83f, 0.72f));
+            var joystickHandle = CreatePanel(
+                joystickBase.transform,
+                "Joystick Handle",
+                Orange,
+                new Vector2(0.33f, 0.33f),
+                new Vector2(0.67f, 0.67f));
+            var virtualJoystick = joystickBase.AddComponent<SimulatorVirtualJoystick>();
+            virtualJoystick.Configure(
+                joystickBase.GetComponent<RectTransform>(),
+                joystickHandle.GetComponent<RectTransform>(),
+                orbitCamera);
+
+            var inspectButton = CreateButton(canvasObject.transform, "Inspect Center", "INSPECCIONAR  ·  SPACE / A", Orange,
+                new Vector2(0.54f, 0.04f), new Vector2(0.75f, 0.115f));
+            inspectButton.onClick.AddListener(InspectCenter);
 
             var stopButton = CreateButton(canvasObject.transform, "Stop Work", "DETENER TRABAJO", Red,
                 new Vector2(0.77f, 0.04f), new Vector2(0.975f, 0.115f));
@@ -530,6 +595,7 @@ namespace FatalZero
         {
             currentStep = index;
             awaitingDecision = false;
+            orbitCamera?.SetInputEnabled(true);
             decisionPanel.SetActive(false);
             feedbackPanel.SetActive(false);
 
@@ -545,6 +611,7 @@ namespace FatalZero
                 progressText.text = "CONTROL 03 / 03";
                 instructionText.text = "Secuencia segura completada. Registra evidencia para validacion.";
                 completionPanel.SetActive(true);
+                orbitCamera?.SetInputEnabled(false);
                 return;
             }
 
@@ -563,6 +630,7 @@ namespace FatalZero
         private void OpenDecision()
         {
             awaitingDecision = true;
+            orbitCamera?.SetInputEnabled(false);
             var step = steps[currentStep];
             decisionTitle.text = step.title;
             decisionPrompt.text = step.prompt;
@@ -606,6 +674,7 @@ namespace FatalZero
             else
             {
                 awaitingDecision = false;
+                orbitCamera?.SetInputEnabled(true);
                 instructionText.text = $"Revisa el control {currentStep + 1} y vuelve a seleccionar el punto activo.";
             }
         }
@@ -621,6 +690,7 @@ namespace FatalZero
             decisionPanel.SetActive(false);
             feedbackPanel.SetActive(true);
             awaitingDecision = false;
+            orbitCamera?.SetInputEnabled(false);
         }
 
         private void SendEvidence()
@@ -735,6 +805,7 @@ namespace FatalZero
             text.fontStyle = style;
             text.alignment = alignment;
             text.color = color;
+            text.raycastTarget = false;
             text.horizontalOverflow = HorizontalWrapMode.Wrap;
             text.verticalOverflow = VerticalWrapMode.Overflow;
             var rect = textObject.GetComponent<RectTransform>();
@@ -783,6 +854,57 @@ namespace FatalZero
         public int StepIndex { get; set; }
     }
 
+    public sealed class SimulatorVirtualJoystick : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerUpHandler
+    {
+        private RectTransform baseRect;
+        private RectTransform handleRect;
+        private SimulatorOrbitCamera orbitCamera;
+
+        public void Configure(RectTransform joystickBase, RectTransform joystickHandle, SimulatorOrbitCamera orbit)
+        {
+            baseRect = joystickBase;
+            handleRect = joystickHandle;
+            orbitCamera = orbit;
+        }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            OnDrag(eventData);
+        }
+
+        public void OnDrag(PointerEventData eventData)
+        {
+            if (baseRect == null || handleRect == null)
+            {
+                return;
+            }
+
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    baseRect,
+                    eventData.position,
+                    eventData.pressEventCamera,
+                    out var localPoint) == false)
+            {
+                return;
+            }
+
+            var radius = Mathf.Max(1f, Mathf.Min(baseRect.rect.width, baseRect.rect.height) * 0.36f);
+            var input = Vector2.ClampMagnitude(localPoint / radius, 1f);
+            handleRect.anchoredPosition = input * radius * 0.52f;
+            orbitCamera?.SetVirtualOrbit(input);
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            if (handleRect != null)
+            {
+                handleRect.anchoredPosition = Vector2.zero;
+            }
+
+            orbitCamera?.SetVirtualOrbit(Vector2.zero);
+        }
+    }
+
     public sealed class SimulatorOrbitCamera : MonoBehaviour
     {
         private Vector3 target;
@@ -790,6 +912,8 @@ namespace FatalZero
         private float yaw;
         private float pitch = 18f;
         private Vector3 lastPointer;
+        private Vector2 virtualOrbit;
+        private bool inputEnabled = true;
 
         public void Configure(Vector3 orbitTarget, float orbitDistance)
         {
@@ -798,8 +922,27 @@ namespace FatalZero
             yaw = transform.eulerAngles.y;
         }
 
+        public void SetVirtualOrbit(Vector2 input)
+        {
+            virtualOrbit = input;
+        }
+
+        public void SetInputEnabled(bool enabled)
+        {
+            inputEnabled = enabled;
+            if (enabled == false)
+            {
+                virtualOrbit = Vector2.zero;
+            }
+        }
+
         private void LateUpdate()
         {
+            if (inputEnabled == false)
+            {
+                return;
+            }
+
             if (Input.GetMouseButtonDown(0))
             {
                 lastPointer = Input.mousePosition;
@@ -813,7 +956,33 @@ namespace FatalZero
                 lastPointer = Input.mousePosition;
             }
 
-            distance = Mathf.Clamp(distance - Input.mouseScrollDelta.y * 0.5f, 7.5f, 13f);
+            var keyboardOrbit = new Vector2(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
+            var orbitInput = Vector2.ClampMagnitude(keyboardOrbit + virtualOrbit, 1f);
+            yaw += orbitInput.x * 76f * Time.deltaTime;
+            pitch = Mathf.Clamp(pitch - orbitInput.y * 54f * Time.deltaTime, 8f, 42f);
+
+            var zoomInput = Input.mouseScrollDelta.y;
+            if (Input.GetKey(KeyCode.Q) || Input.GetKey(KeyCode.PageDown) || Input.GetKey(KeyCode.JoystickButton4))
+            {
+                zoomInput -= 1.4f * Time.deltaTime;
+            }
+            if (Input.GetKey(KeyCode.E) || Input.GetKey(KeyCode.PageUp) || Input.GetKey(KeyCode.JoystickButton5))
+            {
+                zoomInput += 1.4f * Time.deltaTime;
+            }
+
+            if (Input.touchCount == 2)
+            {
+                var first = Input.GetTouch(0);
+                var second = Input.GetTouch(1);
+                var currentDistance = Vector2.Distance(first.position, second.position);
+                var previousDistance = Vector2.Distance(
+                    first.position - first.deltaPosition,
+                    second.position - second.deltaPosition);
+                zoomInput += (currentDistance - previousDistance) * 0.012f;
+            }
+
+            distance = Mathf.Clamp(distance - zoomInput * 0.5f, 7.5f, 13f);
             var rotation = Quaternion.Euler(pitch, yaw, 0f);
             transform.position = target + rotation * new Vector3(0f, 0f, -distance);
             transform.LookAt(target);

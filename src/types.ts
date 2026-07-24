@@ -10,7 +10,20 @@ export type DimensionId =
   | 'regional'
 
 export type MissionState = 'locked' | 'available' | 'active' | 'completed' | 'sustained' | 'not-applicable'
-export type RoleId = 'operator-lashing' | 'supervisor' | 'hsse-local' | 'hsse-regional'
+export type RoleId =
+  | 'operator-lashing'
+  | 'operator-sts'
+  | 'operator-yard-equipment'
+  | 'operator-tractor'
+  | 'operator-gate'
+  | 'operator-reefer'
+  | 'operator-maintenance'
+  | 'operator-hazmat'
+  | 'supervisor'
+  | 'contractor'
+  | 'hsse-local'
+  | 'hsse-regional'
+  | 'client-internal'
 export type PPEId = 'helmet' | 'glasses' | 'gloves' | 'boots' | 'vest' | 'hearing' | 'loto'
 export type SimulatorEngine = 'web-safety' | 'unity-webgl' | 'unity-stream'
 export type SimulatorEventType =
@@ -34,12 +47,37 @@ export interface CollaborationPlan {
 export interface RoleProfile {
   id: RoleId
   name: string
+  shortName: string
+  demoUser: string
+  initials: string
+  level: 'operator' | 'supervisor' | 'contractor' | 'leader' | 'client'
+  decisionFocus: string
   terminal: string
   campaign: string
   mandatoryModules: string[]
   conditionalModules: string[]
+  optionalModules: string[]
   visibleDimensions: DimensionId[]
   informationalDimensions: DimensionId[]
+}
+
+export interface ContentSource {
+  id: string
+  title: string
+  document: string
+  version: string
+  locator?: string
+  status: 'apm-approved' | 'visual-control' | 'local-validation'
+  application: string
+}
+
+export interface TrainingModule {
+  id: string
+  name: string
+  level: 'basic' | 'intermediate' | 'advanced' | 'critical'
+  keyControls: string[]
+  sources: ContentSource[]
+  validationStatus: 'source-backed' | 'mixed' | 'local-validation'
 }
 
 export interface PPEItem {
@@ -112,6 +150,7 @@ export interface Mission {
   subtitle: string
   duration: string
   image: string
+  fieldScanImage?: string
   mapPosition: { x: number; y: number }
   briefing: string
   objective: string
@@ -127,6 +166,7 @@ export interface Mission {
   requiredPpe: PPEId[]
   criticalControls: string[]
   simulation?: SimulationConfig
+  sources?: ContentSource[]
   certificate: string
   reward: number
 }

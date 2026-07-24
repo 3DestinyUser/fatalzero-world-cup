@@ -68,12 +68,17 @@ export default function ARScanner({
 
   const kitReady = mission.requiredPpe.every((id) => selectedPpe.includes(id))
   const visiblePpe = ppeCatalog.filter((item) => mission.requiredPpe.includes(item.id) || ['vest', 'hearing', 'loto'].includes(item.id)).slice(0, 6)
+  const sourceLabels = {
+    'apm-approved': 'APM APPROVED',
+    'visual-control': 'VISUAL CONTROL',
+    'local-validation': 'VALIDACION LOCAL',
+  } as const
 
   return (
     <div className="ar-experience" data-testid="ar-scanner">
       <div className="ar-feed">
         <video ref={videoRef} className={status === 'camera' || status === 'analyzing' ? 'is-visible' : ''} muted playsInline aria-label="Vista de camara para escaneo de campo" />
-        <img className={status === 'camera' || status === 'analyzing' ? '' : 'is-visible'} src={mission.image} alt={`Escenario de demostracion para ${mission.title}`} />
+        <img className={status === 'camera' || status === 'analyzing' ? '' : 'is-visible'} src={mission.fieldScanImage ?? mission.image} alt={`Escenario de campo para ${mission.title}`} />
         <div className="ar-feed-shade" />
         <div className="ar-topline">
           <span><Smartphone /> FIELD SCAN</span>
@@ -93,7 +98,7 @@ export default function ARScanner({
           {status === 'idle' && <button type="button" className="secondary" onClick={startCamera}><Camera /> Activar camara</button>}
           {(status === 'idle' || status === 'fallback') && <button type="button" className="secondary" data-testid="use-demo-scene" onClick={() => setStatus('fallback')}><Eye /> Usar escenario demo</button>}
           {(status === 'camera' || status === 'fallback') && <button type="button" className="primary" data-testid="run-ai-scan" onClick={analyze}><ScanLine /> Escanear zona</button>}
-          {status === 'complete' && <span className="scan-confirmed"><ShieldCheck /> 3 hallazgos para confirmar</span>}
+          {status === 'complete' && <span className="scan-confirmed"><ShieldCheck /> {mission.requiredHazards.length} hallazgos para confirmar</span>}
         </div>
       </div>
 
@@ -137,6 +142,28 @@ export default function ARScanner({
           <strong>Controles antes del EPP</strong>
           {mission.criticalControls.map((control) => <span key={control}><Check /> {control}</span>)}
         </section>
+
+        {!!mission.sources?.length && (
+          <section className="content-provenance">
+            <header>
+              <strong>Base de control</strong>
+              <small>Contenido trazable · alcance prototipo</small>
+            </header>
+            <div>
+              {mission.sources.map((source) => (
+                <details key={source.id}>
+                  <summary>
+                    <span className={`source-status ${source.status}`}>{sourceLabels[source.status]}</span>
+                    <b>{source.title}</b>
+                    <small>{source.version}{source.locator ? ` · ${source.locator}` : ''}</small>
+                  </summary>
+                  <p>{source.application}</p>
+                  <code>{source.document}</code>
+                </details>
+              ))}
+            </div>
+          </section>
+        )}
 
         <button className="primary wide" data-testid="confirm-field-scan" type="button" disabled={status !== 'complete' || !kitReady} onClick={onContinue}>
           Confirmar en el escenario <ShieldCheck />

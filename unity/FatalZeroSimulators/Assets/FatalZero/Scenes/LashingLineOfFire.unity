@@ -119,7 +119,7 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
---- !u!1 &197583620
+--- !u!1 &691164400
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -127,8 +127,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 197583622}
-  - component: {fileID: 197583621}
+  - component: {fileID: 691164402}
+  - component: {fileID: 691164401}
   m_Layer: 0
   m_Name: FatalZeroBridge
   m_TagString: Untagged
@@ -136,25 +136,25 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &197583621
+--- !u!114 &691164401
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 197583620}
+  m_GameObject: {fileID: 691164400}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 926f9ec95bb662a4ea0a2313e2950666, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FatalZero.FatalZeroBridge
---- !u!4 &197583622
+--- !u!4 &691164402
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 197583620}
+  m_GameObject: {fileID: 691164400}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -163,7 +163,7 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &352068535
+--- !u!1 &2122737663
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -171,8 +171,8 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 352068537}
-  - component: {fileID: 352068536}
+  - component: {fileID: 2122737665}
+  - component: {fileID: 2122737664}
   m_Layer: 0
   m_Name: LashingLineOfFireSimulator
   m_TagString: Untagged
@@ -180,26 +180,26 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &352068536
+--- !u!114 &2122737664
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 352068535}
+  m_GameObject: {fileID: 2122737663}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 362258f1ff9afc347b61b37bcb14b182, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FatalZero.LashingHandsSimulator
   Variant: 1
---- !u!4 &352068537
+--- !u!4 &2122737665
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 352068535}
+  m_GameObject: {fileID: 2122737663}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
@@ -212,5 +212,5 @@ Transform:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 197583622}
-  - {fileID: 352068537}
+  - {fileID: 691164402}
+  - {fileID: 2122737665}

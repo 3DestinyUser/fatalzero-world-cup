@@ -1,4 +1,5 @@
-import type { Challenge, DimensionId, Mission, PPEItem, RoleProfile } from './types'
+import type { Challenge, DimensionId, Mission, PPEItem } from './types'
+import { sources } from './moduleData'
 
 const asset = (name: string) => `${import.meta.env.BASE_URL}assets/${name}`
 
@@ -12,20 +13,6 @@ export const dimensions: Record<DimensionId, { number: number; name: string; val
   immersive: { number: 7, name: 'Immersive Learning', value: 'Practica que genera memoria' },
   operational: { number: 8, name: 'Operational Control', value: 'Evidencia y validacion' },
   regional: { number: 9, name: 'Regional Analytics', value: 'Aprendizaje que escala' },
-}
-
-export const activeRole: RoleProfile = {
-  id: 'operator-lashing',
-  name: 'Operario de Trinca y Destrinca',
-  terminal: 'APM Terminals Buenos Aires',
-  campaign: 'Trinca y Destrinca Segura',
-  mandatoryModules: [
-    'Inspeccion de pasarela', 'Transportes', 'Cargas suspendidas',
-    'Combate de incendios', 'Trinca y destrinca', 'Trabajo en jaula',
-  ],
-  conditionalModules: ['Trabajos en altura', 'Energia almacenada', 'Contratistas'],
-  visibleDimensions: ['culture', 'prevent', 'training', 'immersive', 'operational'],
-  informationalDimensions: ['knowledge', 'advisor', 'intelligence', 'regional'],
 }
 
 export const ppeCatalog: PPEItem[] = [
@@ -92,7 +79,7 @@ const mission = (
 export const missions: Mission[] = [
   mission({
     id: 'access', order: 1, title: 'Acceso seguro al buque', shortTitle: 'Acceso seguro',
-    subtitle: 'Pasarela, ingreso y condiciones del entorno', duration: '12 min', image: asset('lashing-5.png'),
+    subtitle: 'Pasarela, ingreso y condiciones del entorno', duration: '12 min', image: asset('lashing-5.png'), fieldScanImage: asset('field-scan/access.png'),
     mapPosition: { x: 80, y: 71 },
     briefing: 'Antes de llegar a la plataforma de lashing, cada integrante debe confirmar que el acceso, el clima y la comunicacion permiten comenzar sin exposicion innecesaria.',
     objective: 'Reconocer las condiciones que habilitan o detienen el ingreso al buque.',
@@ -102,11 +89,12 @@ export const missions: Mission[] = [
     evidence: ['Checklist de pasarela', 'Confirmacion de clima', 'Autorizacion de ingreso'],
     requiredPpe: ['helmet', 'boots', 'vest'], criticalControls: ['Pasarela inspeccionada', 'Condiciones climaticas verificadas', 'Ingreso coordinado con la cuadrilla'],
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor', 'regional'],
+    sources: [sources.height, sources.lashingVcp, sources.traffic, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el checklist de acceso', description: 'Tu confirmacion de pasarela puede ayudar a la siguiente cuadrilla antes de subir al buque.', impact: 'El aprendizaje queda disponible para otros turnos.' }, certificate: 'Safe Vessel Access', reward: 180,
   }),
   mission({
     id: 'steel', order: 2, title: 'El peso del acero', shortTitle: 'Peso del acero',
-    subtitle: 'Postura, fatiga y manipulacion de barras', duration: '15 min', image: asset('lashing-4.png'),
+    subtitle: 'Postura, fatiga y manipulacion de barras', duration: '15 min', image: asset('lashing-4.png'), fieldScanImage: asset('field-scan/steel.png'),
     mapPosition: { x: 61, y: 59 },
     briefing: 'Una barra de trinca puede medir 2,5 metros y pesar cerca de 14 kg. La fatiga acumulada cambia la postura y aumenta la probabilidad de lesion.',
     objective: 'Elegir una tecnica de levantamiento controlada y reconocer cuando pedir ayuda.',
@@ -116,11 +104,12 @@ export const missions: Mission[] = [
     evidence: ['Autoevaluacion de fatiga', 'Demostracion de postura', 'Ruta despejada'],
     requiredPpe: ['helmet', 'gloves', 'boots'], criticalControls: ['Evaluacion de fatiga', 'Tecnica de levantamiento controlada', 'Apoyo de la cuadrilla cuando corresponde'],
     primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['knowledge', 'advisor', 'operational'],
+    sources: [sources.lashingVcp, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor'], collaboration: { title: 'Comparte una tecnica de postura', description: 'Ayuda a otra persona a levantar la barra usando piernas, control y apoyo de la cuadrilla.', impact: 'Una buena tecnica se convierte en habito colectivo.' }, certificate: 'Lashing Ergonomics', reward: 200,
   }),
   mission({
     id: 'hands', order: 3, title: 'Manos fuera del peligro', shortTitle: 'Manos seguras',
-    subtitle: 'Tensores, pasadores y atrapamientos', duration: '18 min', image: asset('lashing-3.png'),
+    subtitle: 'Tensores, pasadores y atrapamientos', duration: '18 min', image: asset('lashing-3.png'), fieldScanImage: asset('field-scan/hands.png'),
     mapPosition: { x: 43, y: 46 },
     briefing: 'Un movimiento repentino del tensor puede aplastar o cizallar los dedos. La posicion de las manos es un control critico.',
     objective: 'Mantener dedos fuera del ojal, pasador y trayectoria de componentes tensionados.',
@@ -139,11 +128,12 @@ export const missions: Mission[] = [
       ],
     },
     primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['knowledge', 'advisor', 'operational'],
+    sources: [sources.energy, sources.lashingVcp, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el punto de atrapamiento', description: 'Registra donde deben mantenerse las manos fuera del tensor para que el equipo aprenda antes de intervenir.', impact: 'El hallazgo alimenta Knowledge y previene la repeticion.' }, certificate: 'Hands in Control', reward: 240,
   }),
   mission({
     id: 'release', order: 4, title: 'Liberacion brusca', shortTitle: 'Linea de fuego',
-    subtitle: 'Energia acumulada y trayectoria', duration: '18 min', image: asset('lashing-2.png'),
+    subtitle: 'Energia acumulada y trayectoria', duration: '18 min', image: asset('lashing-2.png'), fieldScanImage: asset('field-scan/release.png'),
     mapPosition: { x: 31, y: 61 },
     briefing: 'La deformacion del buque puede acumular tension. Al liberar una barra superior, el elemento puede salir despedido y alcanzar rostro o cuerpo.',
     objective: 'Reconocer la trayectoria potencial y posicionarse fuera de la linea de fuego.',
@@ -162,11 +152,12 @@ export const missions: Mission[] = [
       ],
     },
     primaryDimensions: ['culture', 'prevent', 'training', 'immersive'], supportingDimensions: ['intelligence', 'advisor', 'knowledge', 'operational', 'regional'],
+    sources: [sources.energy, sources.lashingVcp, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte la trayectoria segura', description: 'Marca la linea de fuego y deja una referencia para que otra cuadrilla pueda posicionarse mejor.', impact: 'Una decision local puede convertirse en una barrera regional.' }, certificate: 'Line of Fire Control', reward: 260,
   }),
   mission({
     id: 'eyes', order: 5, title: 'Proteccion ocular', shortTitle: 'Proteccion ocular',
-    subtitle: 'Gafas, casco y ajuste correcto', duration: '12 min', image: asset('lashing-2.png'),
+    subtitle: 'Gafas, casco y ajuste correcto', duration: '12 min', image: asset('lashing-2.png'), fieldScanImage: asset('field-scan/ppe.png'),
     mapPosition: { x: 51, y: 31 },
     briefing: 'Particulas, corrosion y liberaciones bruscas pueden impactar ojos y rostro. El ajuste correcto permite que la proteccion cumpla su funcion.',
     objective: 'Verificar proteccion ocular y casco antes de entrar en la zona de tarea.',
@@ -176,11 +167,12 @@ export const missions: Mission[] = [
     evidence: ['Inspeccion visual de EPP', 'Ajuste confirmado', 'Registro previo al ingreso'],
     requiredPpe: ['helmet', 'glasses', 'gloves'], criticalControls: ['EPP inspeccionado y ajustado', 'Zona de proyeccion identificada', 'Ingreso posterior a la verificacion'],
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor'],
+    sources: [sources.policy, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor'], collaboration: { title: 'Comparte una verificacion de EPP', description: 'Ayuda a tu equipo a revisar gafas, casco y barbijo antes de entrar en la zona.', impact: 'La proteccion correcta se vuelve una practica visible.' }, certificate: 'Eye & Face Protection', reward: 160,
   }),
   mission({
     id: 'suspended', order: 6, title: 'Cargas suspendidas', shortTitle: 'Carga suspendida',
-    subtitle: 'STS, spreaders y zonas de exclusion', duration: '20 min', image: asset('lashing-1.png'),
+    subtitle: 'STS, spreaders y zonas de exclusion', duration: '20 min', image: asset('lashing-1.png'), fieldScanImage: asset('field-scan/suspended.png'),
     mapPosition: { x: 70, y: 34 },
     briefing: 'La operacion de trinca convive con gruas STS y spreaders. Una zona de exclusion evita que una persona quede debajo o junto a una carga.',
     objective: 'Interpretar el movimiento de la carga y respetar zonas de exclusion.',
@@ -199,11 +191,12 @@ export const missions: Mission[] = [
       ],
     },
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['intelligence', 'advisor', 'regional', 'knowledge'],
-    applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte una ruta fuera de la carga', description: 'Comparte la ruta alternativa y la comunicacion confirmada con tu equipo.', impact: 'La segregacion se refuerza con conocimiento compartido.' }, certificate: 'Suspended Load Awareness', reward: 280,
+    sources: [sources.lifting, sources.liftingVcp],
+    applicableRoles: ['operator-lashing', 'operator-sts', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte una ruta fuera de la carga', description: 'Comparte la ruta alternativa y la comunicacion confirmada con tu equipo.', impact: 'La segregacion se refuerza con conocimiento compartido.' }, certificate: 'Suspended Load Awareness', reward: 280,
   }),
   mission({
     id: 'crew', order: 7, title: 'Coordinacion de cuadrilla', shortTitle: 'Coordinacion',
-    subtitle: 'Senales, comunicacion y Stop Work', duration: '16 min', image: asset('lashing-5.png'),
+    subtitle: 'Senales, comunicacion y Stop Work', duration: '16 min', image: asset('lashing-5.png'), fieldScanImage: asset('field-scan/crew.png'),
     mapPosition: { x: 22, y: 42 },
     briefing: 'La tarea depende de una secuencia compartida. Si una persona no comprende una senal, detener y alinear al equipo protege a todos.',
     objective: 'Usar comunicacion cerrada y Stop Work frente a una condicion no controlada.',
@@ -213,11 +206,12 @@ export const missions: Mission[] = [
     evidence: ['Stop Work registrado', 'Briefing de cuadrilla', 'Confirmacion de roles'],
     requiredPpe: ['helmet', 'vest', 'hearing'], criticalControls: ['Comunicacion cerrada', 'Roles y secuencia confirmados', 'Stop Work disponible para toda la cuadrilla'],
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['knowledge', 'advisor', 'regional'],
+    sources: [sources.policy, sources.lashingVcp, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el briefing de cuadrilla', description: 'Deja una secuencia de senales y roles para que el siguiente turno comience alineado.', impact: 'Colaborar se convierte en control operativo.' }, certificate: 'Crew Safety Collaboration', reward: 240,
   }),
   mission({
     id: 'conditions', order: 8, title: 'Condiciones cambiantes', shortTitle: 'Condiciones',
-    subtitle: 'Lluvia, noche, oleaje y secuencia', duration: '20 min', image: asset('lashing-5.png'),
+    subtitle: 'Lluvia, noche, oleaje y secuencia', duration: '20 min', image: asset('lashing-5.png'), fieldScanImage: asset('field-scan/conditions.png'),
     mapPosition: { x: 86, y: 47 },
     briefing: 'Una tarea que comenzo segura puede dejar de serlo. El clima, la visibilidad y el movimiento del buque deben reevaluarse durante la operacion.',
     objective: 'Detectar cambios, reevaluar controles y decidir si la tarea puede continuar.',
@@ -227,6 +221,7 @@ export const missions: Mission[] = [
     evidence: ['Cambio reportado', 'Evaluacion actualizada', 'Autorizacion de reinicio'],
     requiredPpe: ['helmet', 'glasses', 'boots', 'vest'], criticalControls: ['Condiciones reevaluadas', 'Iluminacion y adherencia suficientes', 'Reinicio autorizado despues de recuperar controles'],
     primaryDimensions: ['culture', 'prevent', 'training', 'operational'], supportingDimensions: ['intelligence', 'advisor', 'knowledge', 'regional'],
+    sources: [sources.height, sources.lashingVcp, sources.local],
     applicableRoles: ['operator-lashing', 'supervisor', 'hsse-local'], collaboration: { title: 'Comparte el cambio detectado', description: 'Registra la condicion cambiante y ayuda a otros a reevaluar antes de continuar.', impact: 'La adaptacion local alimenta la capacidad de anticipacion.' }, certificate: 'Dynamic Risk Control', reward: 300,
   }),
 ]
