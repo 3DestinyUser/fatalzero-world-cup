@@ -12,9 +12,9 @@
       "label": "Unity WebGL · Liberación brusca"
     },
     "suspended-load-v1": {
-      "enabled": false,
+      "enabled": true,
       "launchUrl": "./unity/builds/suspended-load-v1/index.html",
-      "label": "Unity WebGL · Suspended Load"
+      "label": "Unity WebGL · Cargas suspendidas"
     }
   }
 }

@@ -13,6 +13,8 @@ namespace FatalZero.Editor
         private const string HandsBuildKey = "lashing-hands-v1";
         private const string ReleaseScenePath = "Assets/FatalZero/Scenes/LashingLineOfFire.unity";
         private const string ReleaseBuildKey = "lashing-line-of-fire-v1";
+        private const string SuspendedScenePath = "Assets/FatalZero/Scenes/SuspendedLoad.unity";
+        private const string SuspendedBuildKey = "suspended-load-v1";
 
         [MenuItem("FATALZERO/Build Hands in Control WebGL")]
         public static void BuildWebGL()
@@ -36,11 +38,23 @@ namespace FatalZero.Editor
                 LashingScenarioVariant.LineOfFire);
         }
 
+        [MenuItem("FATALZERO/Build Suspended Load WebGL")]
+        public static void BuildSuspendedLoadWebGL()
+        {
+            BuildSimulator(
+                SuspendedScenePath,
+                SuspendedBuildKey,
+                "FATALZERO · Suspended Load",
+                "SuspendedLoadSimulator",
+                LashingScenarioVariant.SuspendedLoad);
+        }
+
         [MenuItem("FATALZERO/Build All WebGL Simulators")]
         public static void BuildAllWebGL()
         {
             BuildWebGL();
             BuildLineOfFireWebGL();
+            BuildSuspendedLoadWebGL();
         }
 
         private static void BuildSimulator(
@@ -91,6 +105,15 @@ namespace FatalZero.Editor
                 ReleaseScenePath,
                 "LashingLineOfFireSimulator",
                 LashingScenarioVariant.LineOfFire);
+        }
+
+        [MenuItem("FATALZERO/Create Suspended Load Scene")]
+        public static void CreateSuspendedLoadScene()
+        {
+            CreateScene(
+                SuspendedScenePath,
+                "SuspendedLoadSimulator",
+                LashingScenarioVariant.SuspendedLoad);
         }
 
         private static void CreateScene(

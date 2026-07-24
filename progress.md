@@ -86,6 +86,15 @@ Original prompt: Crear FATALZERO como un juego educativo integral para PC, mobil
 - [x] Mision 4 conectada al mismo flujo FATALZERO de evidencia, validacion, certificado y 9D.
 - [x] Validador automatico para todas las builds Unity habilitadas.
 
+### Tercer simulador Unity real
+
+- [x] Escena `SuspendedLoad` para la mision `Cargas suspendidas`.
+- [x] Tres controles propios: respetar zona de exclusion, usar ruta segregada y esperar liberacion formal de Operaciones.
+- [x] Contenedor suspendido, spreader, cables, zona de exclusion roja y ruta segura verde visibles en la escena 3D.
+- [x] Fallo seguro ante ingreso bajo carga, reintento y Stop Work reutilizados desde el runtime comun.
+- [x] Build `suspended-load-v1` exportada y habilitada en el catalogo.
+- [x] Mision 6 conectada al flujo central de evidencia, validacion humana, certificado y contribucion 9D.
+
 ### Validacion de la arquitectura hibrida
 
 - [x] `npm run build` correcto.

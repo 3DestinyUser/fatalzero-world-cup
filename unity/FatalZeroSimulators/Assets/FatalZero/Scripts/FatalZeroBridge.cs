@@ -158,6 +158,30 @@ namespace FatalZero
         private static MissionContext CreateEditorContext()
         {
             if (LashingHandsSimulator.Instance != null
+                && LashingHandsSimulator.Instance.Variant == LashingScenarioVariant.SuspendedLoad)
+            {
+                return new MissionContext
+                {
+                    protocolVersion = 1,
+                    sessionId = "unity-editor-preview-suspended",
+                    missionId = "suspended",
+                    missionTitle = "Cargas suspendidas",
+                    roleId = "operator-lashing",
+                    roleName = "Operario de Trinca y Destrinca",
+                    terminal = "Buenos Aires",
+                    requiredPpe = new[] { "Casco", "Chaleco", "Calzado" },
+                    criticalControls = new[]
+                    {
+                        "Mantener la zona de exclusion",
+                        "Usar una ruta segregada alternativa",
+                        "Confirmar la liberacion con Operaciones"
+                    },
+                    primaryDimensions = new[] { "culture", "prevent", "training", "operational" },
+                    supportingDimensions = new[] { "knowledge", "advisor", "intelligence", "regional" }
+                };
+            }
+
+            if (LashingHandsSimulator.Instance != null
                 && LashingHandsSimulator.Instance.Variant == LashingScenarioVariant.LineOfFire)
             {
                 return new MissionContext

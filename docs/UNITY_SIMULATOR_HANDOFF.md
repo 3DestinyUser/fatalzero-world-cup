@@ -190,8 +190,9 @@ lashing runtime:
 | --- | --- | --- |
 | `lashing-hands-v1` | Manos fuera del peligro | Hands in Control |
 | `lashing-line-of-fire-v1` | Liberacion brusca | Line of Fire |
+| `suspended-load-v1` | Cargas suspendidas | Suspended Load |
 
-Both variants reuse camera control, HUD, safe failure, Stop Work and bridge
+All variants reuse camera control, HUD, safe failure, Stop Work and bridge
 events. Each one owns its decision sequence, 3D overlays, feedback and product
 identity.
 
@@ -203,6 +204,8 @@ Build a single scenario from the command line:
   -projectPath ".\unity\FatalZeroSimulators" `
   -executeMethod FatalZero.Editor.SimulatorBuild.BuildLineOfFireWebGL
 ```
+
+Use `BuildSuspendedLoadWebGL` to export the suspended-load scenario.
 
 Build every registered scenario:
 

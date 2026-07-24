@@ -9,7 +9,8 @@ namespace FatalZero
     public enum LashingScenarioVariant
     {
         HandsInControl,
-        LineOfFire
+        LineOfFire,
+        SuspendedLoad
     }
 
     public sealed class LashingHandsSimulator : MonoBehaviour
@@ -112,6 +113,46 @@ namespace FatalZero
             };
         }
 
+        private static List<DecisionStep> CreateSuspendedLoadSteps()
+        {
+            return new List<DecisionStep>
+            {
+                new DecisionStep
+                {
+                    id = "exclusion-zone",
+                    title = "01 · RESPETA LA EXCLUSION",
+                    prompt = "Detectas una carga suspendida en movimiento. ¿Que haces?",
+                    safeAction = "Me detengo fuera de la zona de exclusion",
+                    unsafeAction = "Calculo el tiempo y cruzo rapidamente",
+                    success = "Control confirmado: permaneces fuera del radio de exposicion.",
+                    failure = "Fallo seguro: la velocidad nunca controla una carga suspendida.",
+                    hotspotPosition = new Vector3(0f, 3.55f, 0.55f)
+                },
+                new DecisionStep
+                {
+                    id = "segregated-route",
+                    title = "02 · USA UNA RUTA SEGREGADA",
+                    prompt = "Necesitas continuar hacia tu puesto. ¿Que ruta eliges?",
+                    safeAction = "La ruta verde alternativa, fuera del radio de balanceo",
+                    unsafeAction = "Paso por debajo cuando el spreader se detiene",
+                    success = "Control confirmado: la ruta evita la carga y sus movimientos posibles.",
+                    failure = "Fallo seguro: una carga detenida sigue suspendida y puede moverse.",
+                    hotspotPosition = new Vector3(3.1f, 0.45f, -1.85f)
+                },
+                new DecisionStep
+                {
+                    id = "operations-clearance",
+                    title = "03 · CONFIRMA ZONA LIBERADA",
+                    prompt = "La carga ya no se mueve. ¿Que confirmacion cierra el control?",
+                    safeAction = "Comunicacion con Operaciones y zona formalmente liberada",
+                    unsafeAction = "Contacto visual con el operador de la grua",
+                    success = "Control confirmado: la coordinacion operacional habilita el paso.",
+                    failure = "Fallo seguro: el contacto visual no elimina puntos ciegos.",
+                    hotspotPosition = new Vector3(-3.4f, 1.25f, -1.65f)
+                }
+            };
+        }
+
         private readonly List<GameObject> hotspotObjects = new List<GameObject>();
         private FatalZeroBridge bridge;
         private Camera sceneCamera;
@@ -142,12 +183,29 @@ namespace FatalZero
         private static readonly Color Red = new Color32(231, 52, 52, 255);
         private static readonly Color SoftText = new Color32(180, 202, 218, 255);
 
+        private string DefaultMissionTitle => Variant switch
+        {
+            LashingScenarioVariant.LineOfFire => "LIBERACION BRUSCA",
+            LashingScenarioVariant.SuspendedLoad => "CARGAS SUSPENDIDAS",
+            _ => "MANOS FUERA DEL PELIGRO"
+        };
+
+        private string CompletionTitle => Variant switch
+        {
+            LashingScenarioVariant.LineOfFire => "LINEA DE FUEGO CONTROLADA",
+            LashingScenarioVariant.SuspendedLoad => "ZONA DE EXCLUSION CONTROLADA",
+            _ => "3 CONTROLES CRITICOS CONFIRMADOS"
+        };
+
         private void Awake()
         {
             Instance = this;
-            steps = Variant == LashingScenarioVariant.LineOfFire
-                ? CreateLineOfFireSteps()
-                : CreateHandsSteps();
+            steps = Variant switch
+            {
+                LashingScenarioVariant.LineOfFire => CreateLineOfFireSteps(),
+                LashingScenarioVariant.SuspendedLoad => CreateSuspendedLoadSteps(),
+                _ => CreateHandsSteps()
+            };
         }
 
         private void Start()
@@ -198,9 +256,7 @@ namespace FatalZero
             }
 
             missionTitle.text = string.IsNullOrWhiteSpace(context.missionTitle)
-                ? Variant == LashingScenarioVariant.LineOfFire
-                    ? "LIBERACION BRUSCA"
-                    : "MANOS FUERA DEL PELIGRO"
+                ? DefaultMissionTitle
                 : context.missionTitle.ToUpperInvariant();
             roleLine.text = $"{context.roleName}  ·  {context.terminal}";
         }
@@ -261,7 +317,14 @@ namespace FatalZero
             CreateCube("Safety line left", new Vector3(-3.2f, 0.01f, -1.4f), new Vector3(4.1f, 0.025f, 0.16f), safetyYellow);
             CreateCube("Safety line right", new Vector3(3.2f, 0.01f, -1.4f), new Vector3(4.1f, 0.025f, 0.16f), safetyYellow);
 
-            BuildTurnbuckle(steelMaterial, darkSteel);
+            if (Variant == LashingScenarioVariant.SuspendedLoad)
+            {
+                BuildSuspendedLoad(steelMaterial, containerRed, dangerRed, safeGreen);
+            }
+            else
+            {
+                BuildTurnbuckle(steelMaterial, darkSteel);
+            }
             BuildRailings(steelMaterial);
             if (Variant == LashingScenarioVariant.LineOfFire)
             {
@@ -316,6 +379,36 @@ namespace FatalZero
                 new Vector3(0.56f, 0.08f, 0.56f),
                 Quaternion.identity,
                 dangerMaterial);
+        }
+
+        private void BuildSuspendedLoad(
+            Material steelMaterial,
+            Material loadMaterial,
+            Material dangerMaterial,
+            Material safeMaterial)
+        {
+            CreateCube("Suspended container", new Vector3(0f, 2.65f, 0.65f), new Vector3(4.8f, 2.0f, 2.2f), loadMaterial);
+            CreateCube("STS spreader", new Vector3(0f, 4.35f, 0.65f), new Vector3(5.7f, 0.34f, 2.6f), steelMaterial);
+
+            for (var x = -2f; x <= 2f; x += 4f)
+            {
+                for (var z = -0.2f; z <= 1.5f; z += 1.7f)
+                {
+                    CreateCylinder(
+                        $"Spreader cable {x} {z}",
+                        new Vector3(x, 5.6f, z),
+                        new Vector3(0.035f, 1.25f, 0.035f),
+                        Quaternion.identity,
+                        steelMaterial);
+                }
+            }
+
+            CreateCube("Exclusion front", new Vector3(0f, 0.04f, -0.95f), new Vector3(6.5f, 0.04f, 0.14f), dangerMaterial);
+            CreateCube("Exclusion rear", new Vector3(0f, 0.04f, 2.25f), new Vector3(6.5f, 0.04f, 0.14f), dangerMaterial);
+            CreateCube("Exclusion left", new Vector3(-3.2f, 0.04f, 0.65f), new Vector3(0.14f, 0.04f, 3.2f), dangerMaterial);
+            CreateCube("Exclusion right", new Vector3(3.2f, 0.04f, 0.65f), new Vector3(0.14f, 0.04f, 3.2f), dangerMaterial);
+
+            CreateCube("Alternative route", new Vector3(3.55f, 0.045f, -2.05f), new Vector3(4.2f, 0.045f, 0.55f), safeMaterial);
         }
 
         private void BuildHotspots()
@@ -373,7 +466,7 @@ namespace FatalZero
             missionTitle = AddText(
                 titlePanel.transform,
                 "Mission",
-                Variant == LashingScenarioVariant.LineOfFire ? "LIBERACION BRUSCA" : "MANOS FUERA DEL PELIGRO",
+                DefaultMissionTitle,
                 30,
                 FontStyle.Bold,
                 TextAnchor.MiddleLeft,
@@ -418,9 +511,7 @@ namespace FatalZero
             AddText(
                 completionPanel.transform,
                 "Complete Title",
-                Variant == LashingScenarioVariant.LineOfFire
-                    ? "LINEA DE FUEGO CONTROLADA"
-                    : "3 CONTROLES CRITICOS CONFIRMADOS",
+                CompletionTitle,
                 34,
                 FontStyle.Bold,
                 TextAnchor.MiddleCenter,
@@ -458,9 +549,15 @@ namespace FatalZero
             }
 
             progressText.text = $"CONTROL {index + 1:00} / {steps.Count:00}";
-            instructionText.text = Variant == LashingScenarioVariant.LineOfFire
-                ? $"Selecciona el punto {index + 1} en la escena 3D.\nInspecciona la energia y la trayectoria marcada."
-                : $"Selecciona el punto {index + 1} en la escena 3D.\nArrastra para inspeccionar el tensor.";
+            instructionText.text = Variant switch
+            {
+                LashingScenarioVariant.LineOfFire =>
+                    $"Selecciona el punto {index + 1} en la escena 3D.\nInspecciona la energia y la trayectoria marcada.",
+                LashingScenarioVariant.SuspendedLoad =>
+                    $"Selecciona el punto {index + 1} en la escena 3D.\nInspecciona la carga, la exclusion y la ruta verde.",
+                _ =>
+                    $"Selecciona el punto {index + 1} en la escena 3D.\nArrastra para inspeccionar el tensor."
+            };
         }
 
         private void OpenDecision()
